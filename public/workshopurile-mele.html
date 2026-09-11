@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workshop-urile Mele</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dashboard-body">
+    <div class="navbar">
+        <h3 id="welcome"></h3>
+        <button class="ghost-btn" onclick="window.location.href='profile.html'">Profil</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="card">
+        <a class="back-link" href="dashboard.html">Înapoi la dashboard</a>
+        <h2>Workshop-urile Mele</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Titlu</th>
+                    <th>Descriere</th>
+                    <th>Dată</th>
+                    <th>Progres</th>
+                    <th>Acțiune</th>
+                </tr>
+            </thead>
+
+            <tbody id="listaWorkshopuri"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const token = localStorage.getItem("token");
+        // luăm obiectul utilizator
+        const utilizator = JSON.parse(localStorage.getItem("utilizator"));
+        if (!token || !utilizator) window.location.href = "login.html";
+
+        const idUtilizator = utilizator.idUtilizator;
+
+        document.getElementById("welcome").innerText =
+            `Bine ai venit, ${utilizator.nume} (${utilizator.denumireRol})!`;
+
+        let activeDialogResolve = null;
+        let activeDialogInput = null;
+
+        function openDialog({
+            title = "Mesaj",
+            message = "",
+            showCancel = false,
+            inputType = null,
+            inputPlaceholder = "",
+            inputValue = "",
+            okText = "OK",
+            cancelText = "Anulează"
+        } = {}) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById("dialogModal");
+                const dialogTitle = document.getElementById("dialogTitle");
+                const dialogMessage = document.getElementById("dialogMessage");
+                const inputWrap = document.getElementById("dialogInputWrap");
+                const okBtn = document.getElementById("dialogOkBtn");
+                const cancelBtn = document.getElementById("dialogCancelBtn");
+
+                dialogTitle.textContent = title;
+                dialogMessage.textContent = message;
+                okBtn.textContent = okText;
+                cancelBtn.textContent = cancelText;
+                cancelBtn.style.display = showCancel ? "inline-flex" : "none";
+
+                inputWrap.innerHTML = "";
+                activeDialogInput = null;
+                if (inputType) {
+                    inputWrap.style.display = "grid";
+                    if (inputType === "textarea") {
+                        const textarea = document.createElement("textarea");
+                        textarea.placeholder = inputPlaceholder;
+                        textarea.value = inputValue;
+                        inputWrap.appendChild(textarea);
+                        activeDialogInput = textarea;
+                    } else {
+                        const input = document.createElement("input");
+                        input.type = inputType;
+                        input.placeholder = inputPlaceholder;
+                        input.value = inputValue;
+                        inputWrap.appendChild(input);
+                        activeDialogInput = input;
+                    }
+                } else {
+                    inputWrap.style.display = "none";
+                }
+
+                activeDialogResolve = resolve;
+                modal.style.display = "flex";
+
+                if (activeDialogInput) {
+                    activeDialogInput.focus();
+                } else {
+                    okBtn.focus();
+                }
+            });
+        }
+
+        function closeDialog(confirmed) {
+            const modal = document.getElementById("dialogModal");
+            if (!activeDialogResolve) return;
+            const resolve = activeDialogResolve;
+            const value = activeDialogInput ? activeDialogInput.value : "";
+            activeDialogResolve = null;
+            activeDialogInput = null;
+            modal.classList.add("is-closing");
+            window.setTimeout(() => {
+                modal.style.display = "none";
+                modal.classList.remove("is-closing");
+                resolve({ confirmed, value });
+            }, 180);
+        }
+
+        function showMessage(message, title = "Mesaj") {
+            return openDialog({ title, message, showCancel: false });
+        }
+
+        fetch(`http://localhost:3000/inscrierile-mele/${idUtilizator}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const tabela = document.getElementById("listaWorkshopuri");
+
+                // curăță tabelul
+                tabela.innerHTML = "";
+
+                data.forEach(workshop => {
+                    const rand = document.createElement("tr");
+
+                    const tdTitlu = document.createElement("td");
+                    tdTitlu.innerText = workshop.titlu;
+
+                    const tdDescriere = document.createElement("td");
+                    tdDescriere.innerText = workshop.descriere;
+
+                    const tdData = document.createElement("td");
+                    tdData.innerText = new Date(workshop.data).toLocaleString("ro-RO", { dateStyle: "medium", timeStyle: "short" });
+
+                    const tdProgres = document.createElement("td");
+                    tdProgres.innerText = workshop.status || "înscris";
+
+                    const tdActiune = document.createElement("td");
+                    const btnAnuleaza = document.createElement("button");
+                    btnAnuleaza.innerText = "Anulează înscrierea";
+                    btnAnuleaza.onclick = () => anuleaza(workshop.idWorkshop);
+
+                    const btnDetalii = document.createElement("button");
+                    btnDetalii.innerText = "Detalii";
+                    btnDetalii.onclick = () => {
+                        window.location.href = `activitate.html?idWorkshop=${workshop.idWorkshop}`;
+                    };
+
+                    tdActiune.appendChild(btnAnuleaza);
+                    tdActiune.appendChild(document.createTextNode(" "));
+                    tdActiune.appendChild(btnDetalii);
+
+                    rand.appendChild(tdTitlu);
+                    rand.appendChild(tdDescriere);
+                    rand.appendChild(tdData);
+                    rand.appendChild(tdProgres);
+                    rand.appendChild(tdActiune);
+
+                    tabela.appendChild(rand);
+                });
+
+                if (data.length === 0) {
+                    const rand = document.createElement("tr");
+                    rand.innerHTML = `<td colspan="5">Nu ai nicio înscriere!</td>`;
+                    tabela.appendChild(rand);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showMessage("Eroare la încărcarea workshop-urilor tale!");
+            });
+
+        async function anuleaza(idWorkshop) {
+            console.log("Anulez înscriere:", idUtilizator, idWorkshop); // debug
+            fetch("http://localhost:3000/anuleaza-inscriere", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    idWorkshop: Number(idWorkshop)
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data); // debug
+                    showMessage(data.mesaj).then(() => {
+                        location.reload();
+                    });
+                })
+                .catch(err => {
+                    console.error(err);
+                    showMessage("Eroare la anulare!");
+                });
+        }
+
+        function logout() {
+            localStorage.removeItem("utilizator");
+            localStorage.removeItem("token");
+            window.location.href = "index.html";
+        }
+    </script>
+
+    <div id="dialogModal" class="modal dialog-modal" style="display:none;" onclick="closeDialog(false)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-head">
+                <h3 id="dialogTitle">Mesaj</h3>
+            </div>
+            <p id="dialogMessage" class="modal-empty dialog-message"></p>
+            <div id="dialogInputWrap" class="dialog-input" style="display:none;"></div>
+            <div class="modal-actions">
+                <button id="dialogCancelBtn" class="ghost-btn" type="button" onclick="closeDialog(false)">Anulează</button>
+                <button id="dialogOkBtn" type="button" onclick="closeDialog(true)">OK</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

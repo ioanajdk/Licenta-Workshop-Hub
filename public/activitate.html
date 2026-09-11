@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activitate</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dashboard-body">
+    <div class="navbar">
+        <h3 id="welcome"></h3>
+        <button class="ghost-btn" onclick="window.location.href='profile.html'">Profil</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="card">
+        <a id="backLink" class="back-link" href="workshopurile-mele.html">Înapoi</a>
+        <h2 id="titlu">Activitate</h2>
+
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Data</span>
+                <span id="data"></span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Instructor</span>
+                <span id="instructor"></span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Durata</span>
+                <span id="durata"></span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Progres</span>
+                <div class="progress-wrap">
+                    <span id="progresLabel" class="progress-label"></span>
+                    <div class="progress-bar">
+                        <div id="progresFill" class="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h3>Descriere</h3>
+            <p id="descriere"></p>
+        </div>
+
+        <div class="detail-section">
+            <h3>Obiective</h3>
+            <p id="obiective"></p>
+        </div>
+
+        <div class="detail-section materials">
+            <div class="materials-head">
+                <h3>Materiale</h3>
+                <span id="materialsCount" class="materials-count">0</span>
+            </div>
+            <div id="materialsList" class="materials-list"></div>
+            <p id="materialsEmpty" class="materials-empty" style="display:none;">Nu există materiale încă.</p>
+        </div>
+
+        <div id="quizSection" class="detail-section quiz" style="display:none;">
+            <div class="quiz-head">
+                <h3>Quiz-uri materiale</h3>
+                <span id="quizStatus" class="quiz-status"></span>
+            </div>
+            <p id="quizMeta" class="quiz-meta"></p>
+            <div id="quizList" class="quiz-preview" style="display:none;"></div>
+            <div class="quiz-toolbar">
+                <button id="quizToggleBtn" class="ghost-btn" style="display:none;">Deschide quiz</button>
+            </div>
+            <p id="quizSummary" class="quiz-summary" style="display:none;"></p>
+            <div id="checkpointWrap" class="quiz-checkpoint" style="display:none;"></div>
+            <div id="quizWrap" class="quiz-wrap" style="display:none;"></div>
+            <div class="quiz-actions">
+                <button id="submitQuizBtn" style="display:none;">Trimite răspunsuri</button>
+            </div>
+        </div>
+
+        <div class="reviews">
+            <div class="reviews-header">
+                <h3>Recenzii</h3>
+                <div class="reviews-actions">
+                    <button id="addReviewBtn" class="ghost-btn" type="button" style="display:none;">Adaugă recenzie</button>
+                    <button id="editReviewBtn" class="ghost-btn" type="button" style="display:none;">Editează recenzia</button>
+                    <span id="reviewsCount" class="reviews-count">0</span>
+                </div>
+            </div>
+            <p id="reviewNotice" class="reviews-empty" style="display:none;"></p>
+            <div id="reviewsList" class="reviews-list"></div>
+
+            <div id="reviewForm" class="review-form">
+                <h4>Adaugă o recenzie</h4>
+                <div class="rating-row">
+                    <label for="ratingInput">Rating</label>
+                    <select id="ratingInput">
+                        <option value="">Alege rating</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </div>
+                <label for="comentariuInput">Comentariu</label>
+                <textarea id="comentariuInput" placeholder="Scrie o recenzie..."></textarea>
+                <button id="trimiteRecenzieBtn">Trimite recenzie</button>
+            </div>
+        </div>
+
+        <div class="detail-actions">
+            <button id="btnCertificat" style="display:none;">Descarcă certificat</button>
+            <p id="certificatInfo" class="certificat-info" style="display:none;"></p>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem("token");
+        const utilizator = JSON.parse(localStorage.getItem("utilizator"));
+        if (!token || !utilizator) window.location.href = "login.html";
+
+        document.getElementById("welcome").innerText =
+            `Bine ai venit, ${utilizator.nume} (${utilizator.denumireRol})!`;
+
+        const params = new URLSearchParams(window.location.search);
+        const idWorkshop = params.get("idWorkshop");
+        let currentReview = null;
+        let isEditingReview = false;
+        let lastRecenzii = [];
+        let canAddReview = false;
+
+        if (!idWorkshop) {
+            showMessage("Workshop invalid!").then(() => {
+                window.location.href = "workshopurile-mele.html";
+            });
+        }
+
+        let activeDialogResolve = null;
+        let activeDialogInput = null;
+
+        function openDialog({
+            title = "Mesaj",
+            message = "",
+            showCancel = false,
+            inputType = null,
+            inputPlaceholder = "",
+            inputValue = "",
+            okText = "OK",
+            cancelText = "Anulează"
+        } = {}) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById("dialogModal");
+                const dialogTitle = document.getElementById("dialogTitle");
+                const dialogMessage = document.getElementById("dialogMessage");
+                const inputWrap = document.getElementById("dialogInputWrap");
+                const okBtn = document.getElementById("dialogOkBtn");
+                const cancelBtn = document.getElementById("dialogCancelBtn");
+
+                dialogTitle.textContent = title;
+                dialogMessage.textContent = message;
+                okBtn.textContent = okText;
+                cancelBtn.textContent = cancelText;
+                cancelBtn.style.display = showCancel ? "inline-flex" : "none";
+
+                inputWrap.innerHTML = "";
+                activeDialogInput = null;
+                if (inputType) {
+                    inputWrap.style.display = "grid";
+                    if (inputType === "textarea") {
+                        const textarea = document.createElement("textarea");
+                        textarea.placeholder = inputPlaceholder;
+                        textarea.value = inputValue;
+                        inputWrap.appendChild(textarea);
+                        activeDialogInput = textarea;
+                    } else {
+                        const input = document.createElement("input");
+                        input.type = inputType;
+                        input.placeholder = inputPlaceholder;
+                        input.value = inputValue;
+                        inputWrap.appendChild(input);
+                        activeDialogInput = input;
+                    }
+                } else {
+                    inputWrap.style.display = "none";
+                }
+
+                activeDialogResolve = resolve;
+                modal.style.display = "flex";
+
+                if (activeDialogInput) {
+                    activeDialogInput.focus();
+                } else {
+                    okBtn.focus();
+                }
+            });
+        }
+
+        function closeDialog(confirmed) {
+            const modal = document.getElementById("dialogModal");
+            if (!activeDialogResolve) return;
+            const resolve = activeDialogResolve;
+            const value = activeDialogInput ? activeDialogInput.value : "";
+            activeDialogResolve = null;
+            activeDialogInput = null;
+            modal.classList.add("is-closing");
+            window.setTimeout(() => {
+                modal.style.display = "none";
+                modal.classList.remove("is-closing");
+                resolve({ confirmed, value });
+            }, 180);
+        }
+
+        function showMessage(message, title = "Mesaj") {
+            return openDialog({ title, message, showCancel: false });
+        }
+
+        function statusLabel(status) {
+            const map = {
+                inscris: "Înscris",
+                in_curs: "În curs",
+                finalizat: "Finalizat"
+            };
+            return map[String(status || "").toLowerCase()] || status || "-";
+        }
+
+        function statusPercent(status) {
+            const map = {
+                inscris: 25,
+                in_curs: 60,
+                finalizat: 100
+            };
+            const value = map[String(status || "").toLowerCase()];
+            return Number.isFinite(value) ? value : 0;
+        }
+
+        function formatFileSize(size) {
+            if (!Number.isFinite(size)) return "-";
+            const units = ["B", "KB", "MB", "GB"];
+            let value = size;
+            let idx = 0;
+            while (value >= 1024 && idx < units.length - 1) {
+                value /= 1024;
+                idx += 1;
+            }
+            return `${value.toFixed(value >= 10 || idx === 0 ? 0 : 1)} ${units[idx]}`;
+        }
+
+        function renderMateriale(materiale) {
+            const list = document.getElementById("materialsList");
+            const count = document.getElementById("materialsCount");
+            const empty = document.getElementById("materialsEmpty");
+            list.innerHTML = "";
+            count.innerText = materiale.length;
+
+            if (!materiale.length) {
+                empty.style.display = "block";
+                return;
+            }
+
+            empty.style.display = "none";
+            materiale.forEach(m => {
+                const item = document.createElement("div");
+                item.className = "materials-item";
+                item.innerHTML = `
+                    <div class="materials-info">
+                        <span class="materials-name">${m.nume}</span>
+                        <span class="materials-meta">${formatFileSize(m.size)} · ${new Date(m.uploadedAt).toLocaleDateString("ro-RO")}</span>
+                    </div>
+                    <div class="materials-actions"></div>
+                `;
+
+                const actions = item.querySelector(".materials-actions");
+                const downloadBtn = document.createElement("button");
+                downloadBtn.innerText = "Descarcă";
+                downloadBtn.onclick = () => descarcaMaterial(m.id, m.nume);
+                actions.appendChild(downloadBtn);
+
+                list.appendChild(item);
+            });
+        }
+
+        async function incarcaMateriale() {
+            const materialsSection = document.querySelector(".detail-section.materials");
+            const res = await fetch(`http://localhost:3000/workshops/${idWorkshop}/materiale`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            const materiale = await res.json().catch(() => []);
+            if (!res.ok) {
+                renderMateriale([]);
+                if (res.status === 403) {
+                    materialsSection.style.display = "none";
+                }
+                return;
+            }
+
+            renderMateriale(materiale);
+        }
+
+        function updateReviewFormState(recenzii, isEnrolled = true) {
+            const form = document.getElementById("reviewForm");
+            const notice = document.getElementById("reviewNotice");
+            const addBtn = document.getElementById("addReviewBtn");
+            const editBtn = document.getElementById("editReviewBtn");
+            lastRecenzii = Array.isArray(recenzii) ? recenzii : [];
+            currentReview = recenzii.find(r => String(r.idUtilizator) === String(utilizator?.idUtilizator)) || null;
+
+            if (notice) {
+                if (!isEnrolled) {
+                    notice.innerText = "Doar participanții înscriși pot adăuga recenzii.";
+                    notice.style.display = "block";
+                } else {
+                    notice.innerText = "";
+                    notice.style.display = "none";
+                }
+            }
+            if (editBtn) {
+                editBtn.style.display = isEnrolled && currentReview ? "inline-flex" : "none";
+            }
+            if (addBtn) {
+                const canShowAdd = isEnrolled && !currentReview;
+                addBtn.hidden = !canShowAdd;
+                addBtn.style.display = canShowAdd ? "inline-flex" : "none";
+            }
+
+            form.style.display = isEnrolled && isEditingReview ? "grid" : "none";
+            const ratingInput = document.getElementById("ratingInput");
+            const comentariuInput = document.getElementById("comentariuInput");
+            const submitBtn = document.getElementById("trimiteRecenzieBtn");
+
+            if (currentReview) {
+                ratingInput.value = String(currentReview.rating || "");
+                comentariuInput.value = currentReview.comentariu || "";
+                submitBtn.innerText = "Actualizează recenzie";
+            } else {
+                ratingInput.value = "";
+                comentariuInput.value = "";
+                submitBtn.innerText = "Trimite recenzie";
+            }
+        }
+
+        function renderRecenzii(recenzii) {
+            const list = document.getElementById("reviewsList");
+            const count = document.getElementById("reviewsCount");
+            list.innerHTML = "";
+            count.innerText = recenzii.length;
+
+            if (!recenzii.length) {
+                list.innerHTML = "<p class=\"reviews-empty\">Nu există recenzii încă.</p>";
+                return;
+            }
+
+            recenzii.forEach(r => {
+                const item = document.createElement("div");
+                item.className = "review-item";
+                item.innerHTML = `
+                    <div class="review-head">
+                        <span class="review-user">${r.numeUtilizator || "Anonim"}</span>
+                        <span class="review-rating">${"★".repeat(Number(r.rating || 0))}</span>
+                    </div>
+                    <p>${r.comentariu || ""}</p>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        async function incarcaRecenzii() {
+            const resRec = await fetch(`http://localhost:3000/workshops/${idWorkshop}/recenzii`);
+            const recenzii = await resRec.json().catch(() => []);
+            if (!resRec.ok) {
+                renderRecenzii([]);
+                updateReviewFormState([], canAddReview);
+                return;
+            }
+            renderRecenzii(recenzii);
+            updateReviewFormState(recenzii, canAddReview);
+        }
+
+        async function descarcaMaterial(materialId, nume) {
+            const res = await fetch(`http://localhost:3000/materiale/${materialId}/descarca`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) {
+                await showMessage("Nu s-a putut descărca materialul.");
+                return;
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = nume || "material";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        }
+
+        const btnCertificat = document.getElementById("btnCertificat");
+        const certificatInfo = document.getElementById("certificatInfo");
+        btnCertificat.onclick = async () => {
+            const res = await fetch(`http://localhost:3000/certificat/${idWorkshop}/${utilizator.idUtilizator}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) {
+                await showMessage("Nu s-a putut genera certificatul.");
+                return;
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "certificat.pdf";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        };
+
+        const quizSection = document.getElementById("quizSection");
+        const quizStatus = document.getElementById("quizStatus");
+        const quizMeta = document.getElementById("quizMeta");
+        const quizList = document.getElementById("quizList");
+        const quizSummary = document.getElementById("quizSummary");
+        const checkpointWrap = document.getElementById("checkpointWrap");
+        const quizWrap = document.getElementById("quizWrap");
+        const submitQuizBtn = document.getElementById("submitQuizBtn");
+        const quizToggleBtn = document.getElementById("quizToggleBtn");
+        const questionNodes = new Map();
+        let quizPanelOpen = false;
+        let activeQuizIndex = 0;
+        let activeQuizQuestions = [];
+        let activeQuizId = null;
+        let activeQuiz = null;
+        let allQuizzes = [];
+        let allProgressByQuizId = {};
+        let overallProgress = null;
+
+        function clearQuizUI() {
+            checkpointWrap.innerHTML = "";
+            quizWrap.innerHTML = "";
+            quizSummary.style.display = "none";
+            questionNodes.clear();
+            activeQuizIndex = 0;
+            activeQuizQuestions = [];
+        }
+
+        function renderQuizList(quizzes, progressByQuizId) {
+            if (!quizList) return;
+            quizList.innerHTML = "";
+            if (!Array.isArray(quizzes) || !quizzes.length) {
+                quizList.style.display = "none";
+                return;
+            }
+            quizList.style.display = "grid";
+            quizzes.forEach((quiz, idx) => {
+                const progress = progressByQuizId?.[quiz.id] || {};
+                const attempted = Boolean(progress.quizAttempted);
+                const item = document.createElement("div");
+                item.className = "quiz-preview-item" + (quiz.id === activeQuizId ? " is-active" : "");
+                item.innerHTML = `
+                    <span class="quiz-preview-index">${idx + 1}.</span>
+                    <span class="quiz-preview-text">${quiz.title || "Quiz"}</span>
+                    <span class="quiz-preview-badge">${attempted ? "Trimis" : "Nou"}</span>
+                    <button type="button" class="ghost-btn">${attempted ? "Vezi" : "Deschide"}</button>
+                `;
+                const button = item.querySelector("button");
+                button.onclick = () => {
+                    setActiveQuiz(quiz, progressByQuizId, true);
+                };
+                quizList.appendChild(item);
+            });
+        }
+
+        function setActiveQuiz(quiz, progressByQuizId, openPanel) {
+            if (!quiz) return;
+            activeQuiz = quiz;
+            activeQuizId = quiz.id;
+            clearQuizUI();
+            const progress = progressByQuizId?.[quiz.id] || {};
+            const attempted = Boolean(progress.quizAttempted);
+            quizMeta.textContent = `${quiz.title || "Quiz"} · Prag: ${quiz.minScore}%`;
+            if (openPanel && attempted && Number.isFinite(progress.lastScore)) {
+                quizSummary.textContent = `Ultimul scor: ${progress.lastScore}%.`;
+                quizSummary.style.display = "block";
+            } else {
+                quizSummary.style.display = "none";
+            }
+            renderQuizList(allQuizzes, allProgressByQuizId);
+            const checkpointQuestion = (quiz.questions || []).find((q) => q.checkpoint);
+            const quizQuestions = (quiz.questions || []).filter((q) => !q.checkpoint);
+            const checkpointPassed = Boolean(progress.checkpointPassed) || !checkpointQuestion;
+            const checkpointAttempted = Boolean(progress.checkpointAttempted);
+            const quizAttempted = Boolean(progress.quizAttempted);
+
+            if (checkpointQuestion) {
+                checkpointWrap.style.display = "grid";
+                const checkpointTitle = document.createElement("h4");
+                checkpointTitle.textContent = "Checkpoint";
+                checkpointWrap.appendChild(checkpointTitle);
+                renderQuestion(checkpointQuestion, checkpointWrap, "checkpoint_0");
+                if (checkpointAttempted) {
+                    applySavedAnswers(progress.lastCheckpointAnswers || []);
+                    setQuestionsDisabled([checkpointQuestion], true);
+                }
+                const checkpointBtn = document.createElement("button");
+                checkpointBtn.className = "ghost-btn";
+                checkpointBtn.textContent = checkpointPassed
+                    ? "Checkpoint completat"
+                    : checkpointAttempted
+                        ? "Checkpoint trimis"
+                        : "Verifică checkpoint";
+                checkpointBtn.disabled = checkpointAttempted;
+                checkpointBtn.onclick = async () => {
+                    const result = await submitQuizAnswers({
+                        checkpointOnly: true,
+                        questions: [checkpointQuestion]
+                    });
+                    if (!result) return;
+                    applyQuizFeedback(result.details || []);
+                    checkpointBtn.disabled = true;
+                    if (result.passed) {
+                        checkpointBtn.textContent = "Checkpoint completat";
+                        await showMessage("Checkpoint trecut. Poți continua cu quiz-ul final.");
+                        await incarcaQuiz();
+                    } else {
+                        checkpointBtn.textContent = "Checkpoint trimis";
+                        await showMessage("Checkpoint nereușit. Nu mai poți reface.");
+                    }
+                };
+                checkpointWrap.appendChild(checkpointBtn);
+            }
+
+            if (checkpointPassed && quizQuestions.length) {
+                quizWrap.style.display = "grid";
+                const quizTitle = document.createElement("h4");
+                quizTitle.textContent = "Quiz final";
+                quizWrap.appendChild(quizTitle);
+                quizQuestions.forEach((q, idx) => renderQuestion(q, quizWrap, `quiz_${idx}`));
+                activeQuizQuestions = quizQuestions;
+                if (quizAttempted) {
+                    applySavedAnswers(progress.lastQuizAnswers || []);
+                    setQuestionsDisabled(quizQuestions, true);
+                }
+                const nav = document.createElement("div");
+                nav.className = "quiz-nav";
+                nav.innerHTML = `
+                    <button type="button" class="ghost-btn quiz-nav-prev">Înapoi</button>
+                    <span class="quiz-nav-indicator"></span>
+                    <button type="button" class="ghost-btn quiz-nav-next">Înainte</button>
+                `;
+                quizWrap.appendChild(nav);
+                nav.querySelector(".quiz-nav-prev").onclick = () => showQuizQuestion(activeQuizIndex - 1);
+                nav.querySelector(".quiz-nav-next").onclick = () => showQuizQuestion(activeQuizIndex + 1);
+                showQuizQuestion(0);
+                submitQuizBtn.disabled = quizAttempted;
+                submitQuizBtn.classList.toggle("is-submitted", quizAttempted);
+                submitQuizBtn.textContent = quizAttempted ? "Quiz trimis" : "Trimite răspunsuri";
+                submitQuizBtn.onclick = async () => {
+                    const result = await submitQuizAnswers({
+                        checkpointOnly: false,
+                        questions: quizQuestions
+                    });
+                    if (!result) return;
+                    applyQuizFeedback(result.details || []);
+                    quizSummary.textContent = result.passed
+                        ? `Felicitări! Scor: ${result.score}% (prag ${quiz.minScore}%).`
+                        : `Scor: ${result.score}% (prag ${quiz.minScore}%). Nu mai poți reface.`;
+                    quizSummary.style.display = "block";
+                    toggleQuizPanel(false);
+                    submitQuizBtn.disabled = true;
+                    submitQuizBtn.classList.add("is-submitted");
+                    submitQuizBtn.textContent = "Quiz trimis";
+                };
+            } else {
+                quizWrap.style.display = "none";
+                submitQuizBtn.style.display = "none";
+            }
+
+            if (openPanel) {
+                toggleQuizPanel(true);
+            } else {
+                toggleQuizPanel(false);
+            }
+        }
+
+        function toggleQuizPanel(open) {
+            quizPanelOpen = open;
+            quizWrap.style.display = open && activeQuizQuestions.length ? "grid" : "none";
+            checkpointWrap.style.display = open && checkpointWrap.childElementCount ? "grid" : "none";
+            submitQuizBtn.style.display = open && activeQuizQuestions.length ? "inline-flex" : "none";
+            quizToggleBtn.style.display = open ? "inline-flex" : "none";
+            quizToggleBtn.textContent = "Închide quiz";
+            if (open) {
+                const progress = allProgressByQuizId?.[activeQuizId] || {};
+                if (Boolean(progress.quizAttempted) && Number.isFinite(progress.lastScore)) {
+                    quizSummary.textContent = `Ultimul scor: ${progress.lastScore}%.`;
+                    quizSummary.style.display = "block";
+                } else {
+                    quizSummary.style.display = "none";
+                }
+            } else {
+                quizSummary.style.display = "none";
+            }
+        }
+
+        function showQuizQuestion(index) {
+            if (!activeQuizQuestions.length) return;
+            const clamped = Math.max(0, Math.min(index, activeQuizQuestions.length - 1));
+            activeQuizIndex = clamped;
+            activeQuizQuestions.forEach((q, idx) => {
+                const node = questionNodes.get(q.id);
+                if (node) {
+                    node.style.display = idx === clamped ? "grid" : "none";
+                }
+            });
+            const indicator = quizWrap.querySelector(".quiz-nav-indicator");
+            if (indicator) {
+                indicator.textContent = `Întrebarea ${clamped + 1} din ${activeQuizQuestions.length}`;
+            }
+            const prevBtn = quizWrap.querySelector(".quiz-nav-prev");
+            const nextBtn = quizWrap.querySelector(".quiz-nav-next");
+            if (prevBtn) prevBtn.disabled = clamped === 0;
+            if (nextBtn) {
+                nextBtn.disabled = clamped === activeQuizQuestions.length - 1;
+                nextBtn.style.display = clamped === activeQuizQuestions.length - 1 ? "none" : "inline-flex";
+            }
+            submitQuizBtn.style.display = clamped === activeQuizQuestions.length - 1 ? "inline-flex" : "none";
+        }
+
+        function renderQuestion(q, container, groupName) {
+            const wrap = document.createElement("div");
+            wrap.className = "quiz-question";
+            wrap.dataset.questionId = q.id;
+
+            const title = document.createElement("p");
+            title.className = "quiz-question-text";
+            title.textContent = q.text;
+            wrap.appendChild(title);
+
+            const optionsWrap = document.createElement("div");
+            optionsWrap.className = "quiz-options";
+
+            q.options.forEach((opt, idx) => {
+                const label = document.createElement("label");
+                label.className = "quiz-option";
+                const input = document.createElement("input");
+                input.type = "radio";
+                input.name = groupName;
+                input.value = String(idx);
+                label.appendChild(input);
+                const span = document.createElement("span");
+                span.textContent = opt;
+                label.appendChild(span);
+                optionsWrap.appendChild(label);
+            });
+
+            wrap.appendChild(optionsWrap);
+            container.appendChild(wrap);
+            questionNodes.set(q.id, wrap);
+        }
+
+        function applySavedAnswers(answers) {
+            if (!Array.isArray(answers)) return;
+            answers.forEach((a) => {
+                const node = questionNodes.get(String(a.questionId));
+                if (!node) return;
+                const input = node.querySelector(`input[value="${a.selectedIndex}"]`);
+                if (input) input.checked = true;
+            });
+        }
+
+        function setQuestionsDisabled(questions, disabled) {
+            questions.forEach((q) => {
+                const node = questionNodes.get(String(q.id));
+                if (!node) return;
+                node.querySelectorAll("input").forEach((input) => {
+                    input.disabled = disabled;
+                });
+            });
+        }
+
+        function getSelectedIndex(groupName) {
+            const selected = document.querySelector(`input[name="${groupName}"]:checked`);
+            return selected ? Number(selected.value) : null;
+        }
+
+        async function submitQuizAnswers({ checkpointOnly, questions }) {
+            if (!activeQuizId) {
+                await showMessage("Selectează un quiz înainte de a trimite.");
+                return null;
+            }
+            const answers = [];
+            let missing = false;
+
+            questions.forEach((q, idx) => {
+                const selectedIndex = getSelectedIndex(`${checkpointOnly ? "checkpoint" : "quiz"}_${idx}`);
+                if (!Number.isFinite(selectedIndex)) {
+                    missing = true;
+                } else {
+                    answers.push({ questionId: q.id, selectedIndex });
+                }
+            });
+
+            if (missing) {
+                await showMessage("Completează toate întrebările înainte de a trimite.");
+                return null;
+            }
+
+            const res = await fetch(`http://localhost:3000/workshops/${idWorkshop}/quiz/submit`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ answers, checkpointOnly, quizId: activeQuizId })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                await showMessage(data.mesaj || "Eroare la trimiterea quiz-ului.");
+                return null;
+            }
+
+            return data;
+        }
+
+        function applyQuizFeedback(details) {
+            details.forEach((d) => {
+                const node = questionNodes.get(d.questionId);
+                if (!node) return;
+                node.classList.remove("is-correct", "is-wrong");
+                node.classList.add(d.correct ? "is-correct" : "is-wrong");
+                const existing = node.querySelector(".quiz-feedback");
+                if (existing) existing.remove();
+                if (d.explanation) {
+                    const feedback = document.createElement("p");
+                    feedback.className = "quiz-feedback";
+                    feedback.textContent = d.explanation;
+                    node.appendChild(feedback);
+                }
+            });
+        }
+
+        async function incarcaQuiz() {
+            const res = await fetch(`http://localhost:3000/workshops/${idWorkshop}/quiz`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.exists) {
+                quizSection.style.display = "none";
+                quizToggleBtn.style.display = "none";
+                if (quizList) quizList.style.display = "none";
+                return;
+            }
+
+            allQuizzes = Array.isArray(data.quizzes) ? data.quizzes : [];
+            overallProgress = data.progress || null;
+            allProgressByQuizId = overallProgress?.byQuizId || {};
+            quizSection.style.display = "block";
+            if (Number.isFinite(overallProgress?.averageScore)) {
+                quizStatus.textContent = `Medie quiz-uri: ${overallProgress.averageScore}%`;
+                quizStatus.classList.add("is-warning");
+            } else {
+                quizStatus.textContent = `Quiz-uri: ${allQuizzes.length}`;
+                quizStatus.classList.remove("is-warning");
+            }
+
+            const selected = allQuizzes.find((q) => q.id === activeQuizId) || allQuizzes[0];
+            if (!selected) {
+                quizToggleBtn.style.display = "none";
+                return;
+            }
+            setActiveQuiz(selected, allProgressByQuizId, false);
+        }
+
+        if (quizToggleBtn) {
+            quizToggleBtn.onclick = () => {
+                toggleQuizPanel(!quizPanelOpen);
+            };
+        }
+
+        fetch(`http://localhost:3000/inscrieri/${utilizator.idUtilizator}/${idWorkshop}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.mesaj) {
+                    canAddReview = false;
+                    updateReviewFormState([], false);
+                    showMessage(data.mesaj);
+                    return;
+                }
+
+                canAddReview = true;
+
+                document.getElementById("titlu").innerText = data.titlu || "Activitate";
+                document.getElementById("descriere").innerText = data.descriere || "-";
+                document.getElementById("data").innerText = data.data
+                    ? new Date(data.data).toLocaleString("ro-RO", { dateStyle: "medium", timeStyle: "short" })
+                    : "-";
+                document.getElementById("instructor").innerText = data.numeInstructor || "-";
+                document.getElementById("durata").innerText = data.durata ? `${data.durata} ore` : "-";
+                document.getElementById("obiective").innerText = data.obiective || "-";
+                const status = data.status || "inscris";
+                document.getElementById("progresLabel").innerText = statusLabel(status);
+                document.getElementById("progresFill").style.width = `${statusPercent(status)}%`;
+
+                if (String(status).toLowerCase() === "finalizat" && data.prezenta === true) {
+                    btnCertificat.style.display = "inline-flex";
+                    certificatInfo.style.display = "none";
+                    certificatInfo.textContent = "";
+                } else {
+                    btnCertificat.style.display = "none";
+                    if (String(status).toLowerCase() === "finalizat") {
+                        certificatInfo.textContent = "Nu indeplinesti conditiile pentru descarcarea certificatului.";
+                        certificatInfo.style.display = "block";
+                    } else {
+                        certificatInfo.style.display = "none";
+                        certificatInfo.textContent = "";
+                    }
+                }
+
+                incarcaMateriale();
+                incarcaQuiz();
+                incarcaRecenzii();
+            })
+            .catch(err => {
+                console.error(err);
+                showMessage("Eroare la preluarea activității!");
+            });
+
+        document.getElementById("trimiteRecenzieBtn").onclick = async () => {
+            const ratingInput = document.getElementById("ratingInput").value;
+            const comentariuInput = document.getElementById("comentariuInput").value;
+
+            const rating = Number(ratingInput);
+            const comentariu = String(comentariuInput || "").trim();
+
+            if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+                await showMessage("Rating invalid. Introdu un număr între 1 și 5.");
+                return;
+            }
+
+            if (!comentariu) {
+                await showMessage("Comentariu obligatoriu.");
+                return;
+            }
+
+            const resRec = await fetch("http://localhost:3000/recenzii", {
+                method: currentReview ? "PUT" : "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    idWorkshop,
+                    rating,
+                    comentariu
+                })
+            });
+
+            const payload = await resRec.json().catch(() => ({}));
+            if (!resRec.ok) {
+                await showMessage(payload.mesaj || "Eroare la adăugare recenzie!");
+                return;
+            }
+
+            isEditingReview = false;
+            await incarcaRecenzii();
+        };
+
+        document.getElementById("editReviewBtn").onclick = () => {
+            isEditingReview = true;
+            updateReviewFormState(lastRecenzii, canAddReview);
+        };
+
+        document.getElementById("addReviewBtn").onclick = () => {
+            isEditingReview = true;
+            updateReviewFormState(lastRecenzii, canAddReview);
+        };
+
+        function logout() {
+            localStorage.removeItem("utilizator");
+            localStorage.removeItem("token");
+            window.location.href = "index.html";
+        }
+    </script>
+
+    <div id="dialogModal" class="modal dialog-modal" style="display:none;" onclick="closeDialog(false)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-head">
+                <h3 id="dialogTitle">Mesaj</h3>
+            </div>
+            <p id="dialogMessage" class="modal-empty dialog-message"></p>
+            <div id="dialogInputWrap" class="dialog-input" style="display:none;"></div>
+            <div class="modal-actions">
+                <button id="dialogCancelBtn" class="ghost-btn" type="button" onclick="closeDialog(false)">Anulează</button>
+                <button id="dialogOkBtn" type="button" onclick="closeDialog(true)">OK</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

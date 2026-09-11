@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autentificare</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h2>Autentificare</h2>
+
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="parola" placeholder="Parolă">
+        
+        <button onclick="login()">Autentificare</button>
+
+        <p id="mesaj"></p>
+
+        <a href="register.html">Nu ai un cont? Creează unul!</a>
+
+    </div>
+    
+    <script>
+        async function login() {
+            const email = document.getElementById("email").value;
+            const parola = document.getElementById("parola").value;
+
+            const response = await fetch("http://localhost:3000/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ email, parola })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("utilizator",JSON.stringify(data.utilizator));
+                window.location.href = "dashboard.html";
+            }
+            else
+                document.getElementById("mesaj").innerText = data.mesaj;
+        }
+    </script>
+</body>
+
+</html>

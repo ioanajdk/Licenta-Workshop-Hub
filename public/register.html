@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Înregistrare</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h2>Creare cont</h2>
+
+        <input type="text" id="nume" placeholder="Nume">
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="parola" placeholder="Parolă">
+
+        <select id="rol">
+            <option value="3">Participant</option>
+            <option value="2">Instructor</option>
+        </select>
+
+        <button onclick="register()">Înregistrare</button>
+
+        <p id="mesaj"></p>
+    </div>
+    <script>
+        async function register() {
+            const nume = document.getElementById("nume").value;
+            const email = document.getElementById("email").value;
+            const parola = document.getElementById("parola").value;
+            const idRol = document.getElementById("rol").value;
+
+            const response = await fetch("http://localhost:3000/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ nume, email, parola, idRol })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                document.getElementById("mesaj").innerText = data.mesaj;
+                setTimeout(() => {
+                    window.location.href = "login.html";
+                }, 1500);
+            } else {
+                document.getElementById("mesaj").innerText = data.mesaj;
+            }
+        }
+    </script>
+</body>
+
+</html>

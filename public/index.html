@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workshop Hub</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="landing">
+        <header class="landing-hero">
+            <div class="landing-brand">
+                <span class="landing-pill">Workshop Hub</span>
+                <h1>Învață practic, cunoaște oameni noi și fă pași reali în dezvoltarea ta.</h1>
+                <p class="landing-subtitle">
+                    Găsești workshop-uri practice, susținute de instructori implicați, într-un spațiu simplu în care
+                    te poți înscrie ușor și îți poți urmări progresul fără complicații.
+                </p>
+                <div class="landing-actions">
+                    <a class="landing-btn" href="login.html">Autentificare</a>
+                    <a class="landing-btn landing-btn--ghost" href="register.html">Creează cont</a>
+                </div>
+            </div>
+            <div class="landing-card">
+                <h2>Ce găsești pe platformă</h2>
+                <ul>
+                    <li>Workshop-uri practice în programare, design, marketing și business.</li>
+                    <li>Sesiuni cu locuri limitate, organizate clar și orientate spre rezultate.</li>
+                    <li>Certificări de participare și rapoarte personale despre progresul tău.</li>
+                    <li>Filtre simple după dată, nivel și categorie, ca să găsești rapid ce te interesează.</li>
+                </ul>
+            </div>
+        </header>
+
+        <section class="landing-section">
+            <div class="landing-info">
+                <h3>De ce merită să alegi Workshop Hub?</h3>
+                <p>
+                    Platforma e gândită pentru organizatori, instructori și participanți: de la propuneri și înscrieri,
+                    până la evaluări și rezultate. Totul este la un loc, într-un mod clar, simplu și plăcut de folosit.
+                </p>
+            </div>
+            <div class="landing-stats">
+                <div class="stat-card">
+                    <span class="stat-label">Categorii active</span>
+                    <span class="stat-value">4</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Niveluri</span>
+                    <span class="stat-value">3</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Format</span>
+                    <span class="stat-value">Live</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-workshops">
+            <div class="landing-workshops-head">
+                <div>
+                    <h3>Activități disponibile</h3>
+                    <p class="landing-note">Înscrierea necesită autentificare; poți crea un cont rapid.</p>
+                </div>
+            </div>
+            <div id="landingWorkshops" class="landing-workshops-grid"></div>
+            <p id="landingWorkshopsEmpty" class="landing-note" style="display:none;">Nu există activități publice momentan.</p>
+        </section>
+    </div>
+
+    <script>
+        const nivelLabel = (idNivel) => {
+            const map = {
+                1: "Începător",
+                2: "Intermediar",
+                3: "Avansat"
+            };
+            return map[Number(idNivel)] || "-";
+        };
+
+        const categorieLabel = (idCategorie) => {
+            const map = {
+                1: "Programare",
+                2: "Design",
+                3: "Marketing",
+                4: "Business"
+            };
+            return map[Number(idCategorie)] || "-";
+        };
+
+        async function incarcaWorkshopuriPublice() {
+            const list = document.getElementById("landingWorkshops");
+            const empty = document.getElementById("landingWorkshopsEmpty");
+            list.innerHTML = "";
+
+            const res = await fetch("http://localhost:3000/workshops?status=aprobat");
+            const workshopuri = await res.json().catch(() => []);
+
+            if (!res.ok || !Array.isArray(workshopuri) || workshopuri.length === 0) {
+                empty.style.display = "block";
+                return;
+            }
+
+            empty.style.display = "none";
+            workshopuri.slice(0, 6).forEach(w => {
+                const card = document.createElement("div");
+                card.className = "landing-workshop-card";
+                card.innerHTML = `
+                    <div class="landing-workshop-head">
+                        <h4>${w.titlu || "Activitate"}</h4>
+                        <span class="landing-pill">${nivelLabel(w.idNivel)}</span>
+                    </div>
+                    <p class="landing-workshop-meta">${new Date(w.data).toLocaleDateString("ro-RO")} · ${categorieLabel(w.idCategorie)}</p>
+                    <p class="landing-workshop-desc">${w.descriere || "Descriere indisponibilă."}</p>
+                    <button class="landing-btn landing-btn--ghost" type="button">Vezi detalii</button>
+                `;
+                const btn = card.querySelector("button");
+                btn.onclick = () => {
+                    window.location.href = `workshop.html?id=${w.idWorkshop}`;
+                };
+                list.appendChild(card);
+            });
+        }
+
+        incarcaWorkshopuriPublice();
+    </script>
+</body>
+
+</html>

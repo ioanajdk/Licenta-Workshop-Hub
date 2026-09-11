@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil utilizator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dashboard-body">
+    <div class="navbar">
+        <h3 id="welcome"></h3>
+        <button class="ghost-btn" onclick="window.location.href='dashboard.html'">Dashboard</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="card">
+        <h2>Profilul meu</h2>
+        <p class="profile-message" id="profileMessage"></p>
+
+        <div class="profile-grid">
+            <div class="profile-card">
+                <div class="profile-head">
+                    <div class="profile-hero">
+                        <div id="profileAvatar" class="profile-avatar">WH</div>
+                        <div class="profile-hero-text">
+                            <h3 id="profileHeroName" class="profile-hero-name">Utilizator</h3>
+                            <span id="profileRoleBadge" class="profile-role-badge">Participant</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-meta">
+                    <div><strong>Email:</strong> <span id="profileEmail">-</span></div>
+                    <div><strong>Înregistrat:</strong> <span id="profileCreated">-</span></div>
+                </div>
+            </div>
+
+            <div class="profile-card">
+                <div class="profile-head">
+                    <h3 class="profile-title">Editează profilul</h3>
+                </div>
+                <form id="profileForm" class="profile-form">
+                    <label for="nume">Nume</label>
+                    <input id="nume" name="nume" type="text" placeholder="Nume complet" required>
+
+                    <label for="email">Email</label>
+                    <input id="email" name="email" type="email" placeholder="Email" required>
+
+                    <label for="parolaCurenta">Parolă curentă (doar pentru schimbare)</label>
+                    <input id="parolaCurenta" name="parolaCurenta" type="password" placeholder="Parola curentă">
+
+                    <label for="parolaNoua">Parolă nouă</label>
+                    <input id="parolaNoua" name="parolaNoua" type="password" placeholder="Parola nouă">
+
+                    <div class="profile-actions">
+                        <button type="submit">Salvează modificările</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="profile-card" id="statsCard" style="display:none;">
+                <div class="profile-head">
+                    <h3 class="profile-title">Statistici</h3>
+                </div>
+                <div id="statsContent" class="profile-stats"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem("token");
+        let utilizator = null;
+
+        try {
+            const raw = localStorage.getItem("utilizator");
+            utilizator = raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            utilizator = null;
+        }
+
+        if (!token || !utilizator) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("utilizator");
+            window.location.href = "login.html";
+        }
+
+        const messageEl = document.getElementById("profileMessage");
+
+        function setMessage(text, type = "") {
+            messageEl.textContent = text || "";
+            messageEl.className = "profile-message" + (type ? ` ${type}` : "");
+        }
+
+        function hashToHue(value) {
+            let hash = 0;
+            const str = String(value || "");
+            for (let i = 0; i < str.length; i += 1) {
+                hash = (hash * 31 + str.charCodeAt(i)) % 360;
+            }
+            return hash;
+        }
+
+        function getInitials(name) {
+            const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+            if (!parts.length) return "WH";
+            if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+            return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+        }
+
+        function roleBadgeClass(role) {
+            const normalized = String(role || "").toLowerCase();
+            if (normalized === "admin") return "profile-role-badge is-admin";
+            if (normalized === "instructor") return "profile-role-badge is-instructor";
+            return "profile-role-badge is-participant";
+        }
+
+        function renderProfile(data) {
+            document.getElementById("welcome").innerText = `Bine ai venit, ${data.nume} (${data.denumireRol})!`;
+            document.getElementById("profileEmail").innerText = data.email || "-";
+            document.getElementById("profileCreated").innerText = data.data_inregistrarii
+                ? new Date(data.data_inregistrarii).toLocaleDateString("ro-RO")
+                : "-";
+
+            const avatarEl = document.getElementById("profileAvatar");
+            const badgeEl = document.getElementById("profileRoleBadge");
+            const nameEl = document.getElementById("profileHeroName");
+            avatarEl.textContent = getInitials(data.nume);
+            const hue = hashToHue(data.nume);
+            avatarEl.style.background = `linear-gradient(135deg, hsl(${hue}, 80%, 55%), hsl(${(hue + 40) % 360}, 80%, 45%))`;
+            nameEl.textContent = data.nume || "Utilizator";
+            badgeEl.textContent = data.denumireRol || "Rol";
+            badgeEl.className = roleBadgeClass(data.denumireRol);
+
+            document.getElementById("nume").value = data.nume || "";
+            document.getElementById("email").value = data.email || "";
+        }
+
+        async function loadProfile() {
+            setMessage("Se încarcă...", "");
+            const res = await fetch(`http://localhost:3000/utilizatori/${utilizator.idUtilizator}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data) {
+                setMessage(data?.mesaj || "Nu s-a putut încărca profilul.", "is-error");
+                return;
+            }
+
+            utilizator = {
+                idUtilizator: data.idUtilizator,
+                nume: data.nume,
+                email: data.email,
+                denumireRol: data.denumireRol
+            };
+            localStorage.setItem("utilizator", JSON.stringify(utilizator));
+            renderProfile(data);
+            await loadStats(data.denumireRol);
+            setMessage("");
+        }
+
+        function categorieLabel(idCategorie) {
+            const map = {
+                1: "Programare",
+                2: "Design",
+                3: "Marketing",
+                4: "Business"
+            };
+            return map[Number(idCategorie)] || "Altele";
+        }
+
+        async function loadStats(rol) {
+            const card = document.getElementById("statsCard");
+            const content = document.getElementById("statsContent");
+            content.innerHTML = "Se încarcă...";
+            card.style.display = "grid";
+
+            const res = await fetch(`http://localhost:3000/utilizatori/${utilizator.idUtilizator}/statistici`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data) {
+                content.innerHTML = "Nu s-au putut încărca statisticile.";
+                return;
+            }
+
+            if (rol === "participant") {
+                const categorii = (data.peCategorii || [])
+                    .map((c) => `<li>${categorieLabel(c.idCategorie)} · <strong>${c.total}</strong></li>`)
+                    .join("") || "<li>Fără înscrieri.</li>";
+
+                content.innerHTML = `
+                    <div class="profile-stat-grid">
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Total înscrieri</span>
+                            <span class="profile-stat-value">${data.totalInscrieri || 0}</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Ore totale</span>
+                            <span class="profile-stat-value">${data.oreTotale || 0}</span>
+                        </div>
+                    </div>
+                    <div class="profile-stat-section">
+                        <h4>Cursuri pe categorii</h4>
+                        <ul class="profile-stat-list">${categorii}</ul>
+                    </div>
+                `;
+                return;
+            }
+
+            if (rol === "instructor") {
+                const popular = data.cursPopular
+                    ? `${data.cursPopular.titlu} · ${data.cursPopular.total} participanți`
+                    : "Nicio activitate";
+
+                content.innerHTML = `
+                    <div class="profile-stat-grid">
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Total participanți</span>
+                            <span class="profile-stat-value">${data.totalParticipanti || 0}</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Rating mediu</span>
+                            <span class="profile-stat-value">${Number(data.ratingMediu || 0).toFixed(1)}</span>
+                        </div>
+                    </div>
+                    <div class="profile-stat-section">
+                        <h4>Cel mai popular curs</h4>
+                        <p class="profile-stat-highlight">${popular}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (rol === "admin") {
+                const totals = data.totaluri || {};
+                const status = data.status || {};
+                content.innerHTML = `
+                    <div class="profile-stat-grid">
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Workshop-uri</span>
+                            <span class="profile-stat-value">${totals.workshopuri || 0}</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Utilizatori</span>
+                            <span class="profile-stat-value">${totals.utilizatori || 0}</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Înscrieri</span>
+                            <span class="profile-stat-value">${totals.inscrieri || 0}</span>
+                        </div>
+                        <div class="profile-stat">
+                            <span class="profile-stat-label">Recenzii</span>
+                            <span class="profile-stat-value">${totals.recenzii || 0}</span>
+                        </div>
+                    </div>
+                    <div class="profile-stat-section">
+                        <h4>Status workshop-uri</h4>
+                        <ul class="profile-stat-list">
+                            <li>Aprobate · <strong>${status.aprobat || 0}</strong></li>
+                            <li>În așteptare · <strong>${status.in_asteptare || 0}</strong></li>
+                            <li>Respinse · <strong>${status.respins || 0}</strong></li>
+                        </ul>
+                    </div>
+                `;
+                return;
+            }
+
+            content.innerHTML = "Nu sunt statistici disponibile.";
+        }
+
+        document.getElementById("profileForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            setMessage("");
+
+            const payload = {
+                nume: document.getElementById("nume").value.trim(),
+                email: document.getElementById("email").value.trim(),
+                parolaCurenta: document.getElementById("parolaCurenta").value,
+                parolaNoua: document.getElementById("parolaNoua").value
+            };
+
+            if (!payload.nume || !payload.email) {
+                setMessage("Completează numele și emailul.", "is-error");
+                return;
+            }
+
+            if (payload.parolaNoua && !payload.parolaCurenta) {
+                setMessage("Introdu parola curentă pentru a schimba parola.", "is-error");
+                return;
+            }
+
+            const res = await fetch(`http://localhost:3000/utilizatori/${utilizator.idUtilizator}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data) {
+                setMessage(data?.mesaj || "Actualizarea nu a reușit.", "is-error");
+                return;
+            }
+
+            document.getElementById("parolaCurenta").value = "";
+            document.getElementById("parolaNoua").value = "";
+            setMessage(data.mesaj || "Profil actualizat!", "is-success");
+
+            if (data.utilizator) {
+                utilizator = {
+                    idUtilizator: data.utilizator.idUtilizator,
+                    nume: data.utilizator.nume,
+                    email: data.utilizator.email,
+                    denumireRol: data.utilizator.denumireRol
+                };
+                localStorage.setItem("utilizator", JSON.stringify(utilizator));
+                renderProfile(data.utilizator);
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem("utilizator");
+            localStorage.removeItem("token");
+            window.location.href = "index.html";
+        }
+
+        loadProfile();
+    </script>
+</body>
+
+</html>

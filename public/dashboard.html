@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dashboard-body">
+
+    <div class="navbar">
+        <h3 id="welcome"></h3>
+        <div class="navbar-admin-actions">
+            <button id="adminNotifyBtn" class="ghost-btn" style="display:none;" onclick="openPendingModal()">
+                În așteptare
+            </button>
+            <button id="adminStatsBtn" class="ghost-btn" style="display:none;" onclick="openStatsModal()">
+                Statistici
+            </button>
+        </div>
+        <div class="navbar-user-actions">
+            <button class="ghost-btn" onclick="window.location.href='profile.html'">Profil</button>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Lista workshop-urilor</h2>
+
+        <!-- Secțiune participant -->
+        <div id="sectiuneParticipant" style="display:none;">
+            <button onclick="window.location.href='workshopurile-mele.html'">
+                Workshop-urile mele
+            </button>
+        </div>
+
+        <!-- Secțiune admin -->
+        <div id="adminSection"></div>
+        <!-- Statistici admin: in modal -->
+
+        <div class="filtre">
+
+            <input type="date" id="filtruData">
+
+            <select id="filtruNivel">
+                <option value="">Toate nivelele</option>
+                <option value="1">Începător</option>
+                <option value="2">Intermediar</option>
+                <option value="3">Avansat</option>
+            </select>
+
+            <select id="filtruCategorie">
+                <option value="">Toate categoriile</option>
+                <option value="1">Programare</option>
+                <option value="2">Design</option>
+                <option value="3">Marketing</option>
+                <option value="4">Business</option>
+            </select>
+
+            <button onclick="incarcaWorkshops()">Filtrează</button>
+
+        </div>
+
+        <div id="listaWorkshopsCards" class="workshop-list" style="display:none;"></div>
+
+        <table id="workshopTable">
+            <thead>
+                <tr>
+                    <th>Titlu</th>
+                    <th>Dată</th>
+                    <th>Acțiune</th>
+                    <th>Participanți</th>
+                    <th>Recenzii</th>
+                </tr>
+            </thead>
+            <tbody id="listaWorkshops"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const token = localStorage.getItem("token");
+        if (!token) window.location.href = "login.html";
+
+        let utilizator;
+        try {
+            const raw = localStorage.getItem("utilizator");
+            if (!raw) window.location.href = "login.html";
+            utilizator = JSON.parse(raw);
+        } catch (e) {
+            localStorage.removeItem("utilizator");
+            window.location.href = "login.html";
+        }
+
+        document.getElementById("welcome").innerText =
+            `Bine ai venit, ${utilizator.nume} (${utilizator.denumireRol})!`;
+
+        // Secțiune participant
+        if (utilizator.denumireRol === "participant") {
+            document.getElementById("sectiuneParticipant").style.display = "block";
+        }
+
+        // Secțiune instructor
+        if (utilizator.denumireRol === "instructor") {
+            const instructorDiv = document.getElementById("adminSection");
+            instructorDiv.style.display = "block";
+
+            const btn = document.createElement("button");
+            btn.innerText = "Adaugă workshop";
+            btn.onclick = () => {
+                openWorkshopForm({ mode: "create" });
+            };
+            instructorDiv.appendChild(btn);
+        }
+
+        const adminNotifyBtn = document.getElementById("adminNotifyBtn");
+        if (utilizator.denumireRol === "admin") {
+            adminNotifyBtn.style.display = "inline-flex";
+        }
+
+        function toLocalDateInputValue(value) {
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return "";
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, "0");
+            const d = String(date.getDate()).padStart(2, "0");
+            return `${y}-${m}-${d}`;
+        }
+
+        function toLocalTimeInputValue(value) {
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return "";
+            const h = String(date.getHours()).padStart(2, "0");
+            const m = String(date.getMinutes()).padStart(2, "0");
+            return `${h}:${m}`;
+        }
+
+        function buildTimeOptions(select, startHour = 8, endHour = 20, stepMinutes = 30) {
+            select.innerHTML = "<option value=\"\">Selectează ora</option>";
+            for (let hour = startHour; hour <= endHour; hour += 1) {
+                for (let minutes = 0; minutes < 60; minutes += stepMinutes) {
+                    if (hour === endHour && minutes > 0) continue;
+                    const h = String(hour).padStart(2, "0");
+                    const m = String(minutes).padStart(2, "0");
+                    const value = `${h}:${m}`;
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.innerText = value;
+                    select.appendChild(option);
+                }
+            }
+        }
+
+        function nivelLabel(idNivel) {
+            const map = {
+                1: "Începător",
+                2: "Intermediar",
+                3: "Avansat"
+            };
+            return map[Number(idNivel)] || "-";
+        }
+
+        function categorieLabel(idCategorie) {
+            const map = {
+                1: "Programare",
+                2: "Design",
+                3: "Marketing",
+                4: "Business"
+            };
+            return map[Number(idCategorie)] || "-";
+        }
+
+        function statusLabel(status) {
+            const map = {
+                aprobat: "Aprobat",
+                respins: "Respins",
+                in_asteptare: "În așteptare"
+            };
+            return map[status] || "-";
+        }
+
+        function statusBadgeClass(status) {
+            if (status === "aprobat") return "badge badge--ok";
+            if (status === "respins") return "badge badge--full";
+            return "badge";
+        }
+
+        let activeDialogResolve = null;
+        let activeDialogInput = null;
+
+        function openDialog({
+            title = "Mesaj",
+            message = "",
+            showCancel = false,
+            inputType = null,
+            inputPlaceholder = "",
+            inputValue = "",
+            okText = "OK",
+            cancelText = "Anulează"
+        } = {}) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById("dialogModal");
+                const dialogTitle = document.getElementById("dialogTitle");
+                const dialogMessage = document.getElementById("dialogMessage");
+                const inputWrap = document.getElementById("dialogInputWrap");
+                const okBtn = document.getElementById("dialogOkBtn");
+                const cancelBtn = document.getElementById("dialogCancelBtn");
+
+                dialogTitle.textContent = title;
+                dialogMessage.textContent = message;
+                okBtn.textContent = okText;
+                cancelBtn.textContent = cancelText;
+                cancelBtn.style.display = showCancel ? "inline-flex" : "none";
+
+                inputWrap.innerHTML = "";
+                activeDialogInput = null;
+                if (inputType) {
+                    inputWrap.style.display = "grid";
+                    if (inputType === "textarea") {
+                        const textarea = document.createElement("textarea");
+                        textarea.placeholder = inputPlaceholder;
+                        textarea.value = inputValue;
+                        inputWrap.appendChild(textarea);
+                        activeDialogInput = textarea;
+                    } else {
+                        const input = document.createElement("input");
+                        input.type = inputType;
+                        input.placeholder = inputPlaceholder;
+                        input.value = inputValue;
+                        inputWrap.appendChild(input);
+                        activeDialogInput = input;
+                    }
+                } else {
+                    inputWrap.style.display = "none";
+                }
+
+                activeDialogResolve = resolve;
+                modal.style.display = "flex";
+
+                if (activeDialogInput) {
+                    activeDialogInput.focus();
+                } else {
+                    okBtn.focus();
+                }
+            });
+        }
+
+        function closeDialog(confirmed) {
+            const modal = document.getElementById("dialogModal");
+            if (!activeDialogResolve) return;
+            const resolve = activeDialogResolve;
+            const value = activeDialogInput ? activeDialogInput.value : "";
+            activeDialogResolve = null;
+            activeDialogInput = null;
+            closeModalWithAnimation(modal);
+            resolve({ confirmed, value });
+        }
+
+        function showMessage(message, title = "Mesaj") {
+            return openDialog({ title, message, showCancel: false });
+        }
+
+        async function showConfirm(message, title = "Confirmare") {
+            const result = await openDialog({ title, message, showCancel: true });
+            return result.confirmed;
+        }
+
+        async function showPrompt(message, {
+            title = "Completează",
+            inputType = "text",
+            placeholder = "",
+            value = ""
+        } = {}) {
+            const result = await openDialog({
+                title,
+                message,
+                showCancel: true,
+                inputType,
+                inputPlaceholder: placeholder,
+                inputValue: value,
+                okText: "Trimite"
+            });
+            return result.confirmed ? result.value : null;
+        }
+
+        async function openParticipantsModal(idWorkshop, titlu) {
+            const modal = document.getElementById("participantsModal");
+            const list = document.getElementById("participantsList");
+            const empty = document.getElementById("participantsEmpty");
+            const title = document.getElementById("participantsTitle");
+
+            title.innerText = titlu ? `Participanți · ${titlu}` : "Participanți";
+            list.innerHTML = "";
+            empty.style.display = "none";
+            modal.style.display = "flex";
+
+            const response = await fetch(`http://localhost:3000/workshops/${idWorkshop}/participanti`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            const participanti = await response.json().catch(() => []);
+
+            if (!response.ok) {
+                empty.style.display = "block";
+                empty.innerText = "Eroare la preluarea participanților.";
+                return;
+            }
+
+            if (!participanti.length) {
+                empty.style.display = "block";
+                empty.innerText = "Niciun participant înscris încă.";
+                return;
+            }
+
+            participanti.forEach(p => {
+                const item = document.createElement("div");
+                item.className = "participants-item";
+                const prezentaText = p.prezenta ? "Prezent" : "Absent";
+                const prezentaClass = p.prezenta ? "presence-badge is-ok" : "presence-badge is-off";
+                const sourceText = p.prezentaManual === null ? "Auto" : "Manual";
+
+                item.innerHTML = `
+                    <div class="participants-main">
+                        <span class="participants-name">${p.nume}</span>
+                        <span class="participants-email">${p.email}</span>
+                    </div>
+                    <div class="participants-actions">
+                        <span class="${prezentaClass}">${prezentaText}</span>
+                        <span class="presence-source">${sourceText}</span>
+                        <label class="presence-toggle">
+                            <input type="checkbox" ${p.prezenta ? "checked" : ""}>
+                            <span>Prezent</span>
+                        </label>
+                        <button class="ghost-btn presence-auto-btn" type="button">Auto</button>
+                    </div>
+                `;
+
+                const checkbox = item.querySelector("input");
+                const autoBtn = item.querySelector(".presence-auto-btn");
+
+                checkbox.addEventListener("change", async () => {
+                    const res = await fetch(`http://localhost:3000/workshops/${idWorkshop}/participanti/${p.idUtilizator}/prezenta`, {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ prezent: checkbox.checked })
+                    });
+
+                    if (!res.ok) {
+                        checkbox.checked = !checkbox.checked;
+                        await showMessage("Nu s-a putut actualiza prezența.");
+                        return;
+                    }
+
+                    const badge = item.querySelector(".presence-badge");
+                    const source = item.querySelector(".presence-source");
+                    badge.textContent = checkbox.checked ? "Prezent" : "Absent";
+                    badge.className = checkbox.checked ? "presence-badge is-ok" : "presence-badge is-off";
+                    source.textContent = "Manual";
+                });
+
+                autoBtn.addEventListener("click", async () => {
+                    const res = await fetch(`http://localhost:3000/workshops/${idWorkshop}/participanti/${p.idUtilizator}/prezenta`, {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ prezent: null })
+                    });
+
+                    if (!res.ok) {
+                        await showMessage("Nu s-a putut reveni la auto.");
+                        return;
+                    }
+
+                    await openParticipantsModal(idWorkshop, titlu);
+                });
+
+                list.appendChild(item);
+            });
+        }
+
+        function closeParticipantsModal() {
+            const modal = document.getElementById("participantsModal");
+            closeModalWithAnimation(modal);
+        }
+
+        function renderWorkshopCards(workshops, inscrieri, listId = "listaWorkshopsCards") {
+            const list = document.getElementById(listId);
+            list.innerHTML = "";
+
+            if (!workshops.length && utilizator.denumireRol === "participant") {
+                const empty = document.createElement("div");
+                empty.className = "workshop-empty";
+                empty.innerText = "Hmmm...se pare că momentan nu este niciun workshop nou.";
+                list.appendChild(empty);
+                return;
+            }
+
+            workshops.forEach(w => {
+                const locuriOcupate = Number(w.nrParticipanti || 0);
+                const locuriMax = Number(w.nr_max_participanti);
+                const locuriPline = Number.isFinite(locuriMax) && locuriOcupate >= locuriMax;
+                const dataWorkshop = new Date(w.data);
+                const workshopTerminat = !Number.isNaN(dataWorkshop.getTime()) && new Date() >= dataWorkshop;
+                const dejaInscris = inscrieri.some(i => i.idWorkshop == w.idWorkshop);
+
+                const card = document.createElement("div");
+                card.className = "workshop-card";
+                card.tabIndex = 0;
+                card.role = "button";
+                const openDetails = () => {
+                    window.location.href = `workshop.html?id=${w.idWorkshop}`;
+                };
+                card.onclick = openDetails;
+                card.onkeydown = (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openDetails();
+                    }
+                };
+
+                const badgeText = workshopTerminat
+                    ? "Terminat"
+                    : dejaInscris
+                        ? "Înscris"
+                        : locuriPline
+                            ? "Complet"
+                            : "Disponibil";
+                const badgeClass = workshopTerminat
+                    ? "badge badge--full"
+                    : dejaInscris
+                        ? "badge badge--ok"
+                        : locuriPline
+                            ? "badge badge--full"
+                            : "badge";
+                const statusText = statusLabel(w.status);
+                const statusClass = statusBadgeClass(w.status);
+
+                card.innerHTML = `
+                    <div class="card-head">
+                        <h3>${w.titlu || "Fără titlu"}</h3>
+                        <span class="${badgeClass}">${badgeText}</span>
+                    </div>
+                    <div class="card-meta">
+                        <span>${new Date(w.data).toLocaleString("ro-RO", { dateStyle: "medium", timeStyle: "short" })}</span>
+                        <span>${categorieLabel(w.idCategorie)}</span>
+                        <span>${nivelLabel(w.idNivel)}</span>
+                        <span>${locuriOcupate}/${locuriMax || "-"} locuri</span>
+                        ${utilizator.denumireRol === "admin" ? `<span class="${statusClass}">${statusText}</span>` : ""}
+                    </div>
+                    <div class="card-actions"></div>
+                `;
+
+                const actions = card.querySelector(".card-actions");
+
+                if (utilizator.denumireRol === "participant") {
+                    if (!dejaInscris && !workshopTerminat) {
+                        const btn = document.createElement("button");
+                        btn.innerText = locuriPline ? "Complet" : "Înscrie-te";
+                        btn.disabled = locuriPline;
+                        btn.onclick = async (e) => {
+                            e.stopPropagation();
+                            const res = await fetch("http://localhost:3000/inscrieri", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${token}`
+                                },
+                                body: JSON.stringify({
+                                    idWorkshop: w.idWorkshop
+                                })
+                            });
+
+                            const data = await res.json();
+                            if (!res.ok) {
+                                await showMessage(data.mesaj || "Eroare la înscriere!");
+                            } else {
+                                await showMessage("Te-ai înscris cu succes!");
+                                incarcaWorkshops();
+                            }
+                        };
+                        actions.appendChild(btn);
+                    }
+                }
+
+                if ((utilizator.denumireRol === "admin" || utilizator.denumireRol === "instructor") && w.status !== "in_asteptare") {
+                    const btnParticipanti = document.createElement("button");
+                    btnParticipanti.innerText = "Vezi participanți";
+                    btnParticipanti.onclick = (e) => {
+                        e.stopPropagation();
+                        openParticipantsModal(w.idWorkshop, w.titlu || "Activitate");
+                    };
+                    actions.appendChild(btnParticipanti);
+                }
+
+                if (utilizator.denumireRol === "admin" && w.status === "in_asteptare") {
+                    const btnAproba = document.createElement("button");
+                    btnAproba.innerText = "Aprobă";
+                    btnAproba.onclick = async (e) => {
+                        e.stopPropagation();
+                        await actualizeazaStatus(w.idWorkshop, "aprobat");
+                    };
+                    actions.appendChild(btnAproba);
+
+                    const btnRespinge = document.createElement("button");
+                    btnRespinge.innerText = "Respinge";
+                    btnRespinge.onclick = async (e) => {
+                        e.stopPropagation();
+                        await actualizeazaStatus(w.idWorkshop, "respins");
+                    };
+                    actions.appendChild(btnRespinge);
+                }
+
+                if (utilizator.denumireRol === "instructor" || utilizator.denumireRol === "admin") {
+                    const btnEdit = document.createElement("button");
+                    btnEdit.innerText = "Editează";
+                    btnEdit.onclick = (e) => {
+                        e.stopPropagation();
+                        openWorkshopForm({ mode: "edit", initial: w });
+                    };
+                    actions.appendChild(btnEdit);
+                }
+
+                if (utilizator.denumireRol === "admin") {
+                    const btnSterge = document.createElement("button");
+                    btnSterge.innerText = "Șterge";
+                    btnSterge.onclick = async (e) => {
+                        e.stopPropagation();
+                        const ok = await showConfirm("Ești sigur că vrei să ștergi această activitate?");
+                        if (!ok) return;
+                        const res = await fetch(`http://localhost:3000/workshops/${w.idWorkshop}`, {
+                            method: "DELETE",
+                            headers: {
+                                Authorization: `Bearer ${token}`
+                            }
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            await showMessage(data.mesaj || "Eroare la ștergere!");
+                            return;
+                        }
+                        incarcaWorkshops();
+                    };
+                    actions.appendChild(btnSterge);
+                }
+
+                list.appendChild(card);
+            });
+        }
+
+        async function actualizeazaStatus(idWorkshop, statusNou) {
+            const res = await fetch(`http://localhost:3000/workshops/${idWorkshop}/status`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: statusNou })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                await showMessage(data.mesaj || "Eroare la actualizarea statusului!");
+                return;
+            }
+            incarcaWorkshops();
+            if (utilizator.denumireRol === "admin") {
+                incarcaPropuneriAdmin();
+            }
+        }
+
+        async function incarcaPropuneriAdmin() {
+            if (utilizator.denumireRol !== "admin") return;
+
+            const res = await fetch("http://localhost:3000/workshops?status=in_asteptare");
+            const propuneri = await res.json();
+
+            const list = document.getElementById("pendingList");
+            const empty = document.getElementById("pendingEmpty");
+
+            list.innerHTML = "";
+            if (!propuneri.length) {
+                empty.style.display = "block";
+                document.getElementById("adminNotifyBtn").innerText = "În așteptare (0)";
+            } else {
+                empty.style.display = "none";
+                document.getElementById("adminNotifyBtn").innerText = `În așteptare (${propuneri.length})`;
+                renderWorkshopCards(propuneri, [], "pendingList");
+            }
+        }
+
+        async function openPendingModal() {
+            if (utilizator.denumireRol !== "admin") return;
+            await incarcaPropuneriAdmin();
+            const modal = document.getElementById("pendingModal");
+            modal.style.display = "flex";
+        }
+
+        function closePendingModal() {
+            const modal = document.getElementById("pendingModal");
+            closeModalWithAnimation(modal);
+        }
+
+        async function incarcaStatisticiAdmin() {
+            const container = document.getElementById("adminAnalytics");
+            const statsBtn = document.getElementById("adminStatsBtn");
+            if (utilizator.denumireRol !== "admin") return;
+
+            statsBtn.style.display = "inline-flex";
+
+            container.style.display = "block";
+            container.innerHTML = "<p>Se încarcă statisticile...</p>";
+
+            const res = await fetch("http://localhost:3000/admin/statistici", {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data) {
+                container.innerHTML = "<p>Nu s-au putut încărca statisticile.</p>";
+                return;
+            }
+
+            const totals = data.totaluri || {};
+            const status = data.status || {};
+            const workshopuri = data.ultimeleWorkshopuri || [];
+            const utilizatori = data.ultimiiUtilizatori || [];
+            const workshopPopular = data.workshopPopular || null;
+            const workshopNepopular = data.workshopNepopular || null;
+
+            const workshopList = workshopuri.length
+                ? workshopuri
+                    .map(w => `<li>${w.titlu || "Fără titlu"} · ${new Date(w.data).toLocaleDateString("ro-RO")}</li>`)
+                    .join("")
+                : "<li>Nicio activitate recentă.</li>";
+
+            const userList = utilizatori.length
+                ? utilizatori
+                    .map(u => `<li>${u.nume || "-"} · ${u.email || "-"}</li>`)
+                    .join("")
+                : "<li>Niciun utilizator recent.</li>";
+
+            const popularLabel = workshopPopular
+                ? `${workshopPopular.titlu || "Fără titlu"} · ${workshopPopular.total || 0} înscrieri`
+                : "Nicio informație disponibilă.";
+            const unpopularLabel = workshopNepopular
+                ? `${workshopNepopular.titlu || "Fără titlu"} · ${workshopNepopular.total || 0} înscrieri`
+                : "Nicio informație disponibilă.";
+
+            container.innerHTML = `
+                <div class="admin-analytics-head">
+                    <h3>Monitorizare activitate platformă</h3>
+                    <button id="downloadReportBtn" class="ghost-btn">Descarcă raport PDF</button>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Workshop-uri</span>
+                        <span class="stat-value">${totals.workshopuri || 0}</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Utilizatori</span>
+                        <span class="stat-value">${totals.utilizatori || 0}</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Înscrieri</span>
+                        <span class="stat-value">${totals.inscrieri || 0}</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Recenzii</span>
+                        <span class="stat-value">${totals.recenzii || 0}</span>
+                    </div>
+                </div>
+                <div class="stat-row">
+                    <div class="stat-box">Aprobate: <strong>${status.aprobat || 0}</strong></div>
+                    <div class="stat-box">În așteptare: <strong>${status.in_asteptare || 0}</strong></div>
+                    <div class="stat-box">Respinse: <strong>${status.respins || 0}</strong></div>
+                </div>
+                <div class="stat-section stat-highlight">
+                    <h4>Popularitate workshop-uri</h4>
+                    <div class="stat-highlight-grid">
+                        <div class="stat-highlight-card stat-highlight-popular">
+                            <span class="stat-label">Cel mai popular</span>
+                            <span class="stat-highlight-value">${popularLabel}</span>
+                        </div>
+                        <div class="stat-highlight-card stat-highlight-unpopular">
+                            <span class="stat-label">Cel mai nepopular</span>
+                            <span class="stat-highlight-value">${unpopularLabel}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-columns">
+                    <div class="stat-section">
+                        <h4>Ultimele workshop-uri</h4>
+                        <ul class="stat-list">${workshopList}</ul>
+                    </div>
+                    <div class="stat-section">
+                        <h4>Ultimii utilizatori</h4>
+                        <ul class="stat-list">${userList}</ul>
+                    </div>
+                </div>
+            `;
+
+            const btn = document.getElementById("downloadReportBtn");
+            btn.onclick = descarcaRaportAdmin;
+        }
+
+        function openStatsModal() {
+            const modal = document.getElementById("statsModal");
+            modal.style.display = "flex";
+        }
+
+        function closeStatsModal() {
+            const modal = document.getElementById("statsModal");
+            closeModalWithAnimation(modal);
+        }
+
+        async function descarcaRaportAdmin() {
+            const res = await fetch("http://localhost:3000/admin/raport", {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) {
+                await showMessage("Nu s-a putut genera raportul.");
+                return;
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "raport_admin.pdf";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function openWorkshopForm({ mode, initial = {} }) {
+            const modal = document.getElementById("workshopModal");
+            const host = document.getElementById("workshopFormHost");
+            host.innerHTML = "";
+            modal.style.display = "flex";
+
+            const form = document.createElement("div");
+            form.className = "workshop-form";
+            form.innerHTML = `
+                <label for="titluWorkshop">Titlu</label>
+                <input id="titluWorkshop" placeholder="Titlu">
+                <label for="descriereWorkshop">Descriere</label>
+                <textarea id="descriereWorkshop" placeholder="Descriere"></textarea>
+                <label for="obiectiveWorkshop">Obiective</label>
+                <textarea id="obiectiveWorkshop" placeholder="Obiective"></textarea>
+                <label for="durataWorkshop">Durată (ore)</label>
+                <input id="durataWorkshop" type="number" placeholder="Durată (ore)">
+                <label for="dataWorkshop">Dată</label>
+                <input id="dataWorkshop" type="date">
+                <label for="oraWorkshop">Oră</label>
+                <select id="oraWorkshop"></select>
+                <label for="nrMaxParticipanti">Număr maxim participanți</label>
+                <input id="nrMaxParticipanti" type="number" placeholder="Număr maxim participanți">
+                <label for="idCategorieWorkshop">Categorie</label>
+                <select id="idCategorieWorkshop">
+                    <option value="">Selectează categoria</option>
+                    <option value="1">Programare</option>
+                    <option value="2">Design</option>
+                    <option value="3">Marketing</option>
+                    <option value="4">Business</option>
+                </select>
+                <label for="idNivelWorkshop">Nivel</label>
+                <select id="idNivelWorkshop">
+                    <option value="">Selectează nivelul</option>
+                    <option value="1">Începător</option>
+                    <option value="2">Intermediar</option>
+                    <option value="3">Avansat</option>
+                </select>
+                <button id="salveazaWorkshop">Salvează</button>
+                <button id="anuleazaWorkshop" type="button">Anulează</button>`;
+            host.appendChild(form);
+
+            form.querySelector("#titluWorkshop").value = initial.titlu || "";
+            form.querySelector("#descriereWorkshop").value = initial.descriere || "";
+            form.querySelector("#obiectiveWorkshop").value = initial.obiective || "";
+            form.querySelector("#durataWorkshop").value = initial.durata ?? "";
+            form.querySelector("#dataWorkshop").value = initial.data ? toLocalDateInputValue(initial.data) : "";
+            buildTimeOptions(form.querySelector("#oraWorkshop"));
+            form.querySelector("#oraWorkshop").value = initial.data ? toLocalTimeInputValue(initial.data) : "";
+            form.querySelector("#nrMaxParticipanti").value = initial.nr_max_participanti ?? "";
+            form.querySelector("#idCategorieWorkshop").value = initial.idCategorie ?? "";
+            form.querySelector("#idNivelWorkshop").value = initial.idNivel ?? "";
+
+            if (mode === "edit") {
+                form.querySelector("#salveazaWorkshop").innerText = "Salvează modificările";
+            }
+
+            form.querySelector("#salveazaWorkshop").onclick = async () => {
+                const titlu = form.querySelector("#titluWorkshop").value;
+                const descriere = form.querySelector("#descriereWorkshop").value;
+                const obiective = form.querySelector("#obiectiveWorkshop").value;
+                const durata = form.querySelector("#durataWorkshop").value;
+                const data = form.querySelector("#dataWorkshop").value;
+                const nr = form.querySelector("#nrMaxParticipanti").value;
+                const ora = form.querySelector("#oraWorkshop").value;
+                const idCategorie = form.querySelector("#idCategorieWorkshop").value;
+                const idNivel = form.querySelector("#idNivelWorkshop").value;
+
+                if (!data || !ora) {
+                    await showMessage("Selectează data și ora.");
+                    return;
+                }
+
+                const dataFinala = `${data} ${ora}:00`;
+
+                const payload = {
+                    titlu,
+                    descriere,
+                    obiective,
+                    durata,
+                    data: dataFinala,
+                    nr_max_participanti: nr,
+                    idCategorie,
+                    idNivel,
+                    idInstructor: utilizator.idUtilizator
+                };
+
+                const url = mode === "edit"
+                    ? `http://localhost:3000/workshops/${initial.idWorkshop}`
+                    : "http://localhost:3000/workshops";
+                const method = mode === "edit" ? "PUT" : "POST";
+
+                const res = await fetch(url, {
+                    method,
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const dataRes = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    await showMessage(dataRes.mesaj || "Eroare la salvarea workshop-ului!");
+                    return;
+                }
+
+                closeWorkshopModal();
+                incarcaWorkshops();
+                if (utilizator.denumireRol === "instructor" && mode === "create") {
+                    openInstructorNotice();
+                }
+            };
+
+            form.querySelector("#anuleazaWorkshop").onclick = () => {
+                closeWorkshopModal();
+            };
+        }
+
+        function closeWorkshopModal() {
+            const modal = document.getElementById("workshopModal");
+            closeModalWithAnimation(modal);
+        }
+
+        function openInstructorNotice() {
+            const modal = document.getElementById("instructorNoticeModal");
+            modal.style.display = "flex";
+        }
+
+        function closeInstructorNotice() {
+            const modal = document.getElementById("instructorNoticeModal");
+            closeModalWithAnimation(modal);
+        }
+
+        function closeModalWithAnimation(modal) {
+            if (!modal) return;
+            modal.classList.add("is-closing");
+            window.setTimeout(() => {
+                modal.style.display = "none";
+                modal.classList.remove("is-closing");
+            }, 180);
+        }
+
+        // Funcție incarcare workshop-uri
+        async function incarcaWorkshops() {
+            try {
+                const data = document.getElementById("filtruData")?.value;
+                const nivel = document.getElementById("filtruNivel")?.value;
+                const categorie = document.getElementById("filtruCategorie")?.value;
+
+                const params = new URLSearchParams();
+                if (data) params.set("data", data);
+                if (nivel) params.set("nivel", nivel);
+                if (categorie) params.set("categorie", categorie);
+
+                if (utilizator.denumireRol !== "admin") {
+                    params.set("status", "aprobat");
+                }
+
+                const url = params.toString()
+                    ? `http://localhost:3000/workshops?${params.toString()}`
+                    : "http://localhost:3000/workshops";
+                const resWorkshops = await fetch(url);
+                let workshops = await resWorkshops.json();
+
+                if (data || nivel || categorie) {
+                    workshops = workshops.filter(w => {
+                        if (data) {
+                            const dataWorkshop = toLocalDateInputValue(w.data);
+                            if (!dataWorkshop || dataWorkshop !== data) return false;
+                        }
+                        if (nivel && String(w.idNivel) !== nivel) return false;
+                        if (categorie && String(w.idCategorie) !== categorie) return false;
+                        return true;
+                    });
+                }
+
+                // Preluăm înscrierile participantului pentru butoanele „Inscris”
+                let inscrieri = [];
+                if (utilizator.denumireRol === "participant") {
+                    const resInscrieri = await fetch(`http://localhost:3000/inscrierile-mele/${utilizator.idUtilizator}`, {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    });
+                    inscrieri = await resInscrieri.json();
+                    // Mapăm ca să fim siguri că avem idWorkshop corect
+                    inscrieri = inscrieri.map(i => ({ idWorkshop: i.idWorkshop }));
+                }
+
+                if (utilizator.denumireRol === "participant") {
+                    const inscrise = new Set(inscrieri.map(i => String(i.idWorkshop)));
+                    workshops = workshops.filter(w => !inscrise.has(String(w.idWorkshop)));
+                }
+
+                const table = document.getElementById("workshopTable");
+                const list = document.getElementById("listaWorkshopsCards");
+
+                table.style.display = "none";
+                list.style.display = "grid";
+                renderWorkshopCards(workshops, inscrieri);
+                if (utilizator.denumireRol === "admin") {
+                    incarcaPropuneriAdmin();
+                    incarcaStatisticiAdmin();
+                }
+                if (utilizator.denumireRol !== "admin" && utilizator.denumireRol !== "instructor") {
+                    return;
+                }
+
+                const lista = document.getElementById("listaWorkshops");
+                lista.innerHTML = "";
+
+                workshops.forEach(w => {
+                    const tr = document.createElement("tr");
+
+                    // Titlu
+                    const tdTitlu = document.createElement("td");
+                    tdTitlu.innerText = w.titlu || "–";
+
+                    // Data
+                    const tdData = document.createElement("td");
+                    tdData.innerText = new Date(w.data).toLocaleString("ro-RO", { dateStyle: "medium", timeStyle: "short" });
+
+                    // Actiune
+                    const tdActiune = document.createElement("td");
+
+                    // Recenzii
+                    const tdRecenzii = document.createElement("td");
+                    const btnRecenzie = document.createElement("button");
+                    
+                    const vizualizareRecenzii = document.createElement("button");
+                    vizualizareRecenzii.innerText = "Vezi recenzii";
+                    vizualizareRecenzii.onclick = async () => {
+                        const res = await fetch(`http://localhost:3000/workshops/${w.idWorkshop}/recenzii`);
+                        const recenzii = await res.json();
+
+                        let mesaj = `Recenzii pentru "${w.titlu}":\n\n`;
+                        if (recenzii.length === 0) {
+                            mesaj += "Nicio recenzie încă.";
+                        } else {
+                            recenzii.forEach(r => {
+                                mesaj += `Rating: ${r.rating}\nComentariu: ${r.comentariu}\n---\n`;
+                            });
+                        }
+                        await showMessage(mesaj, "Recenzii");
+                    };
+                    tdRecenzii.appendChild(vizualizareRecenzii);
+
+                    btnRecenzie.innerText = "Adaugă recenzie";
+                    btnRecenzie.onclick = () => {
+                        adaugaRecenzie(w.idWorkshop);
+                    };
+                    tdRecenzii.appendChild(btnRecenzie);
+
+                    // Participanți
+                    const tdParticipanti = document.createElement("td");
+                    tdParticipanti.innerText = `${w.nrParticipanti}/${w.nr_max_participanti}`;
+
+                    if ((utilizator.denumireRol === "admin" || utilizator.denumireRol === "instructor") && w.status !== "in_asteptare") {
+                        const btnParticipanti = document.createElement("button");
+                        btnParticipanti.innerText = "Vezi participanți";
+                        btnParticipanti.onclick = () => {
+                            veziParticipanti(w.idWorkshop);
+                        };
+                        tdParticipanti.appendChild(document.createTextNode(" "));
+                        tdParticipanti.appendChild(btnParticipanti);
+                    }
+
+                    if (utilizator.denumireRol === "instructor") {
+                        const btnEdit = document.createElement("button");
+                        btnEdit.innerText = "Editează";
+                        btnEdit.onclick = () => {
+                            openWorkshopForm({ mode: "edit", initial: w });
+                        };
+                        tdActiune.appendChild(btnEdit);
+                    }
+
+                    // Participant: buton „Inscrie-te”
+                    if (utilizator.denumireRol === "participant") {
+                        const dejaInscris = inscrieri.some(i => i.idWorkshop == w.idWorkshop);
+                        const locuriOcupate = Number(w.nrParticipanti || 0);
+                        const locuriMax = Number(w.nr_max_participanti);
+                        const locuriPline = Number.isFinite(locuriMax) && locuriOcupate >= locuriMax;
+                        const dataWorkshop = new Date(w.data);
+                        const workshopTerminat = !Number.isNaN(dataWorkshop.getTime()) && new Date() >= dataWorkshop;
+
+                        const button = document.createElement("button");
+
+                        if (workshopTerminat) {
+                            button.innerText = "Terminat";
+                            button.disabled = true;
+                        } else if (dejaInscris) {
+                            button.innerText = "Înscris";
+                            button.disabled = true;
+                        } else if (locuriPline) {
+                            button.innerText = "Complet";
+                            button.disabled = true;
+                        } else {
+                            button.innerText = "Înscrie-te";
+                            button.disabled = false;
+                            button.onclick = async () => {
+                                const res = await fetch("http://localhost:3000/inscrieri", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        Authorization: `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({
+                                        idWorkshop: w.idWorkshop
+                                    })
+                                });
+
+                                const data = await res.json();
+                                if (!res.ok) {
+                                    await showMessage(data.mesaj || "Eroare la înscriere!");
+                                } else {
+                                    await showMessage("Te-ai înscris cu succes!");
+                                    incarcaWorkshops();
+                                }
+                            };
+                        }
+
+                        tdActiune.appendChild(button);
+                    }
+
+                    tr.appendChild(tdTitlu);
+                    tr.appendChild(tdData);
+                    tr.appendChild(tdActiune);
+                    tr.appendChild(tdParticipanti);
+                    tr.appendChild(tdRecenzii);
+
+                    lista.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+                await showMessage("Eroare la preluarea workshop-urilor!");
+            }
+        }
+
+        async function veziParticipanti(idWorkshop) {
+            openParticipantsModal(idWorkshop, "Participanți");
+        }
+
+        async function adaugaRecenzie(idWorkshop) {
+            const ratingInput = await showPrompt("Rating (1-5):", {
+                title: "Adaugă recenzie",
+                inputType: "number",
+                placeholder: "1-5"
+            });
+            if (ratingInput === null) return;
+
+            const comentariuInput = await showPrompt("Comentariu:", {
+                title: "Adaugă recenzie",
+                inputType: "textarea",
+                placeholder: "Scrie comentariul..."
+            });
+            if (comentariuInput === null) return;
+
+            const rating = Number(ratingInput);
+            const comentariu = comentariuInput.trim();
+
+            if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+                await showMessage("Rating invalid. Introdu un număr între 1 și 5.");
+                return;
+            }
+
+            if (!comentariu) {
+                await showMessage("Comentariu obligatoriu.");
+                return;
+            }
+
+            const res = await fetch("http://localhost:3000/recenzii", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    idWorkshop,
+                    rating,
+                    comentariu
+                })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                await showMessage(data.mesaj || "Eroare la adăugare recenzie!");
+                return;
+            }
+
+            await showMessage("Recenzie adăugată cu succes!");
+        }
+
+        function logout() {
+            localStorage.removeItem("utilizator");
+            localStorage.removeItem("token");
+            window.location.href = "index.html";
+        }
+
+        // Incarcare initiala
+        incarcaWorkshops();
+    </script>
+
+    <div id="pendingModal" class="modal" style="display:none;" onclick="closePendingModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-head">
+                <h3>Workshop-uri în așteptare</h3>
+                <button class="ghost-btn" onclick="closePendingModal()">Închide</button>
+            </div>
+            <p id="pendingEmpty" class="modal-empty">Nu există propuneri în așteptare.</p>
+            <div id="pendingList" class="workshop-list"></div>
+        </div>
+    </div>
+
+    <div id="statsModal" class="modal" style="display:none;" onclick="closeStatsModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-head">
+                <h3>Statistici platformă</h3>
+                <button class="ghost-btn" onclick="closeStatsModal()">Închide</button>
+            </div>
+            <div id="adminAnalytics" class="admin-analytics"></div>
+        </div>
+    </div>
+
+    <div id="participantsModal" class="modal" style="display:none;" onclick="closeParticipantsModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-head">
+                <h3 id="participantsTitle">Participanți</h3>
+                <button class="ghost-btn" onclick="closeParticipantsModal()">Închide</button>
+            </div>
+            <p id="participantsEmpty" class="modal-empty" style="display:none;">Se încarcă...</p>
+            <div id="participantsList" class="participants-list"></div>
+        </div>
+    </div>
+
+    <div id="workshopModal" class="modal" style="display:none;" onclick="closeWorkshopModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-head">
+                <h3>Workshop</h3>
+                <button class="ghost-btn" onclick="closeWorkshopModal()">Închide</button>
+            </div>
+            <div id="workshopFormHost"></div>
+        </div>
+    </div>
+
+    <div id="instructorNoticeModal" class="modal" style="display:none;" onclick="closeInstructorNotice()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-head">
+                <h3>Propunere trimisă</h3>
+                <button class="ghost-btn" onclick="closeInstructorNotice()">Închide</button>
+            </div>
+            <p class="modal-empty">Workshop-ul tău este în așteptare pentru confirmarea administratorului.</p>
+        </div>
+    </div>
+
+    <div id="dialogModal" class="modal dialog-modal" style="display:none;" onclick="closeDialog(false)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-head">
+                <h3 id="dialogTitle">Mesaj</h3>
+            </div>
+            <p id="dialogMessage" class="modal-empty dialog-message"></p>
+            <div id="dialogInputWrap" class="dialog-input" style="display:none;"></div>
+            <div class="modal-actions">
+                <button id="dialogCancelBtn" class="ghost-btn" type="button" onclick="closeDialog(false)">Anulează</button>
+                <button id="dialogOkBtn" type="button" onclick="closeDialog(true)">OK</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
