@@ -1,0 +1,72 @@
+[
+  {
+    "id": "1779346575765_370739627",
+    "idWorkshop": 1,
+    "fileName": "1779346575763_240335034.docx",
+    "originalName": "Material Bazele Programarii.docx",
+    "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "size": 22907,
+    "uploadedAt": "2026-05-21T06:56:15.765Z",
+    "uploadedBy": 2
+  },
+  {
+    "id": "1779947862589_95295663",
+    "idWorkshop": 14,
+    "fileName": "1779947862574_750791305.pdf",
+    "originalName": "CerintÌ¦e seminar peda_260316_111057.pdf",
+    "mimeType": "application/pdf",
+    "size": 292615,
+    "uploadedAt": "2026-05-28T05:57:42.589Z",
+    "uploadedBy": 2
+  },
+  {
+    "id": "1783409557950_547600190",
+    "idWorkshop": 17,
+    "fileName": "1783409557827_920617531.pdf",
+    "originalName": "toaz.info-4-ed-2001-smeureanu-i-programarea-in-limbajul-c--pr_f6b6ced7852e97956f1a342100228102.pdf",
+    "mimeType": "application/pdf",
+    "size": 10287007,
+    "uploadedAt": "2026-07-07T07:32:37.950Z",
+    "uploadedBy": 2
+  },
+  {
+    "id": "1783409832042_131263625",
+    "idWorkshop": 18,
+    "fileName": "1783409831972_391249383.pdf",
+    "originalName": "toaz.info-4-ed-2001-smeureanu-i-programarea-in-limbajul-c--pr_f6b6ced7852e97956f1a342100228102 (1).pdf",
+    "mimeType": "application/pdf",
+    "size": 10287007,
+    "uploadedAt": "2026-07-07T07:37:12.042Z",
+    "uploadedBy": 2
+  },
+  {
+    "id": "1783410567785_738740556",
+    "idWorkshop": 19,
+    "fileName": "1783410567681_192532474.pdf",
+    "originalName": "toaz.info-4-ed-2001-smeureanu-i-programarea-in-limbajul-c--pr_f6b6ced7852e97956f1a342100228102 (1) (1).pdf",
+    "mimeType": "application/pdf",
+    "size": 10287007,
+    "uploadedAt": "2026-07-07T07:49:27.785Z",
+    "uploadedBy": 2
+  },
+  {
+    "id": "1783498485789_177890110",
+    "idWorkshop": 20,
+    "fileName": "1783498485412_145365899.pdf",
+    "originalName": "toaz.info-4-ed-2001-smeureanu-i-programarea-in-limbajul-c--pr_f6b6ced7852e97956f1a342100228102.pdf",
+    "mimeType": "application/pdf",
+    "size": 10287007,
+    "uploadedAt": "2026-07-08T08:14:45.789Z",
+    "uploadedBy": 2
+  },
+  {
+    "id": "1783517376504_8283437",
+    "idWorkshop": 22,
+    "fileName": "1783517376213_788837466.pdf",
+    "originalName": "toaz.info-4-ed-2001-smeureanu-i-programarea-in-limbajul-c--pr_f6b6ced7852e97956f1a342100228102.pdf",
+    "mimeType": "application/pdf",
+    "size": 10287007,
+    "uploadedAt": "2026-07-08T13:29:36.504Z",
+    "uploadedBy": 2
+  }
+]

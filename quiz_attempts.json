@@ -1,0 +1,201 @@
+[
+  {
+    "idWorkshop": 1,
+    "idUtilizator": 3,
+    "attempts": [
+      {
+        "type": "quiz",
+        "score": 50,
+        "passed": false,
+        "createdAt": "2026-05-21T07:30:10.222Z"
+      },
+      {
+        "type": "quiz",
+        "score": 75,
+        "passed": true,
+        "createdAt": "2026-05-21T07:39:12.901Z"
+      }
+    ]
+  },
+  {
+    "idWorkshop": 1,
+    "idUtilizator": 4,
+    "attempts": [
+      {
+        "type": "quiz",
+        "score": 25,
+        "passed": false,
+        "createdAt": "2026-05-27T17:32:46.831Z"
+      }
+    ]
+  },
+  {
+    "idWorkshop": 14,
+    "idUtilizator": 4,
+    "attempts": [
+      {
+        "type": "quiz",
+        "score": 100,
+        "passed": true,
+        "createdAt": "2026-05-28T06:01:04.655Z"
+      }
+    ]
+  },
+  {
+    "idWorkshop": 14,
+    "idUtilizator": 3,
+    "attempts": [
+      {
+        "type": "quiz",
+        "score": 100,
+        "passed": true,
+        "createdAt": "2026-05-28T06:07:55.411Z"
+      }
+    ]
+  },
+  {
+    "idWorkshop": 12,
+    "idUtilizator": 3,
+    "attempts": [
+      {
+        "type": "quiz",
+        "quizId": "quiz_1779950206196_591952749",
+        "score": 100,
+        "passed": true,
+        "answers": [
+          {
+            "questionId": "q_1779950199529_946100334",
+            "selectedIndex": 0
+          },
+          {
+            "questionId": "q_1779950187473_733846204",
+            "selectedIndex": 0
+          }
+        ],
+        "createdAt": "2026-05-28T06:37:55.586Z"
+      },
+      {
+        "type": "quiz",
+        "quizId": "quiz_1779950166146_524358382",
+        "score": 100,
+        "passed": true,
+        "answers": [
+          {
+            "questionId": "q_1779950157650_117009085",
+            "selectedIndex": 0
+          },
+          {
+            "questionId": "q_1779950141842_274920356",
+            "selectedIndex": 0
+          }
+        ],
+        "createdAt": "2026-05-28T06:40:21.825Z"
+      },
+      {
+        "type": "quiz",
+        "quizId": "quiz_1779951280470_565197364",
+        "score": 50,
+        "passed": false,
+        "answers": [
+          {
+            "questionId": "q_1779951274887_124913039",
+            "selectedIndex": 1
+          },
+          {
+            "questionId": "q_1779951262123_598384604",
+            "selectedIndex": 0
+          }
+        ],
+        "createdAt": "2026-05-28T06:55:13.369Z"
+      }
+    ]
+  },
+  {
+    "idWorkshop": 15,
+    "idUtilizator": 3,
+    "attempts": [
+      {
+        "type": "quiz",
+        "quizId": "quiz_1780291686617_719098147",
+        "score": 100,
+        "passed": true,
+        "answers": [
+          {
+            "questionId": "q_1780291664166_988844175",
+            "selectedIndex": 0
+          },
+          {
+            "questionId": "q_1780291676369_244389424",
+            "selectedIndex": 0
+          }
+        ],
+        "createdAt": "2026-06-01T05:29:02.463Z"
+      }
+    ]
+  },
+  {
+    "idWorkshop": 16,
+    "idUtilizator": 3,
+    "attempts": [
+      {
+        "type": "quiz",
+        "quizId": "quiz_1781034181518_636177421",
+        "score": 100,
+        "passed": true,
+        "answers": [
+          {
+            "questionId": "q_1781034128986_733359858",
+            "selectedIndex": 0
+          }
+        ],
+        "createdAt": "2026-06-17T09:13:46.894Z"
+      }
+    ]
+  },
+  {
+    "idWorkshop": 18,
+    "idUtilizator": 3,
+    "attempts": [
+      {
+        "type": "quiz",
+        "quizId": "quiz_1783409856210_389535326",
+        "score": 100,
+        "passed": true,
+        "answers": [
+          {
+            "questionId": "q_1783409836388_212939215",
+            "selectedIndex": 0
+          },
+          {
+            "questionId": "q_1783409847923_603023377",
+            "selectedIndex": 1
+          }
+        ],
+        "createdAt": "2026-07-07T07:38:19.932Z"
+      }
+    ]
+  },
+  {
+    "idWorkshop": 19,
+    "idUtilizator": 3,
+    "attempts": [
+      {
+        "type": "quiz",
+        "quizId": "quiz_1783410606454_967883287",
+        "score": 100,
+        "passed": true,
+        "answers": [
+          {
+            "questionId": "q_1783410571597_567790156",
+            "selectedIndex": 0
+          },
+          {
+            "questionId": "q_1783410588846_515030130",
+            "selectedIndex": 1
+          }
+        ],
+        "createdAt": "2026-07-07T07:50:59.281Z"
+      }
+    ]
+  }
+]

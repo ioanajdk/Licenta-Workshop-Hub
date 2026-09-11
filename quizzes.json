@@ -1,0 +1,397 @@
+[
+  {
+    "id": "quiz_1779348353639_20362201",
+    "idWorkshop": 1,
+    "title": "Quiz materiale",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1779347994954_982274848",
+        "text": "Ce este C++?",
+        "options": [
+          "Un joc video",
+          "Un limbaj de programare",
+          "Un sistem de operare",
+          "Un browser"
+        ],
+        "correctIndex": 1,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1779348197095_316587351",
+        "text": "Ce rol are cout in C++?",
+        "options": [
+          "Citeste datele de la tastatura",
+          "Sterge date",
+          "Afiseaza datele pe ecran",
+          "Creeaza variabile"
+        ],
+        "correctIndex": 2,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1779348263401_248220318",
+        "text": "Care dintre urmatoarele este un tip de date pentru numere intregi?",
+        "options": [
+          "float",
+          "char",
+          "int",
+          "string"
+        ],
+        "correctIndex": 2,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1779348298712_927974225",
+        "text": "Ce face instructiunea cin?",
+        "options": [
+          "Afiseaza text",
+          "Citeste datele de la tastatura",
+          "Inchide programul",
+          "Repeta instructiuni"
+        ],
+        "correctIndex": 1,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1779948033959_42312839",
+    "idWorkshop": 14,
+    "title": "Quiz materiale",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1779948025950_178820647",
+        "text": "Q3",
+        "options": [
+          "da",
+          "nu"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1779947974973_676690863",
+        "text": "Q1",
+        "options": [
+          "da",
+          "nu"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1779947953237_56377693",
+        "text": "Q2",
+        "options": [
+          "da",
+          "nu"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1779950166146_524358382",
+    "idWorkshop": 12,
+    "title": "Quiz materiale",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1779950157650_117009085",
+        "text": "Q2",
+        "options": [
+          "da",
+          "nu"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1779950141842_274920356",
+        "text": "Q1",
+        "options": [
+          "da",
+          "nu"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1779950206196_591952749",
+    "idWorkshop": 12,
+    "title": "Quiz materiale 2",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1779950199529_946100334",
+        "text": "Q2",
+        "options": [
+          "da",
+          "nu"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1779950187473_733846204",
+        "text": "Q1",
+        "options": [
+          "da",
+          "nu"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1779951280470_565197364",
+    "idWorkshop": 12,
+    "title": "Quiz materiale 3",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1779951274887_124913039",
+        "text": "2",
+        "options": [
+          "da",
+          "nu"
+        ],
+        "correctIndex": 1,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1779951262123_598384604",
+        "text": "1",
+        "options": [
+          "da",
+          "nu"
+        ],
+        "correctIndex": 1,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1780291686617_719098147",
+    "idWorkshop": 15,
+    "title": "Quiz materiale",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1780291664166_988844175",
+        "text": "1",
+        "options": [
+          "A",
+          "B"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1780291676369_244389424",
+        "text": "2",
+        "options": [
+          "A",
+          "B"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1780406079051_911597106",
+    "idWorkshop": 15,
+    "title": "Quiz materiale",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1780406038023_597723459",
+        "text": "Intrebare 1",
+        "options": [
+          "Optiune 1",
+          "Optiune 2",
+          "Optiune 3"
+        ],
+        "correctIndex": 1,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1780406038023_713520693",
+        "text": "Intrebare 2",
+        "options": [
+          "Optiune 1",
+          "Optiune 2",
+          "Optiune 3"
+        ],
+        "correctIndex": 1,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1781034181518_636177421",
+    "idWorkshop": 16,
+    "title": "Quiz materiale",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1781034128986_733359858",
+        "text": "Care este funcția de afișare a unui rezultat în consolă?",
+        "options": [
+          "print()",
+          "cout",
+          "system.out.printl()"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1783409591404_362237958",
+    "idWorkshop": 17,
+    "title": "Quiz materiale",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1783409563488_811960845",
+        "text": "Q1",
+        "options": [
+          "a",
+          "b"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1783409581139_516751715",
+        "text": "Q2",
+        "options": [
+          "a",
+          "b"
+        ],
+        "correctIndex": 1,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1783409856210_389535326",
+    "idWorkshop": 18,
+    "title": "Quiz materiale",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1783409836388_212939215",
+        "text": "Q1",
+        "options": [
+          "a",
+          "b"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1783409847923_603023377",
+        "text": "Q2",
+        "options": [
+          "a",
+          "b"
+        ],
+        "correctIndex": 1,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1783410606454_967883287",
+    "idWorkshop": 19,
+    "title": "Quiz materiale",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1783410571597_567790156",
+        "text": "Intrebare 1",
+        "options": [
+          "raspuns corect",
+          "raspuns gresit"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1783410588846_515030130",
+        "text": "Intrebare 2",
+        "options": [
+          "raspuns gresit",
+          "raspuns corect"
+        ],
+        "correctIndex": 1,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  },
+  {
+    "id": "quiz_1783411324255_710415740",
+    "idWorkshop": 19,
+    "title": "Quiz materiale",
+    "minScore": 70,
+    "questions": [
+      {
+        "id": "q_1783411305670_804580819",
+        "text": "Intrebare 1",
+        "options": [
+          "Opt 1",
+          "Opt 2",
+          "Opt 3"
+        ],
+        "correctIndex": 0,
+        "explanation": "",
+        "checkpoint": false
+      },
+      {
+        "id": "q_1783411305670_317570251",
+        "text": "Intrebare 2",
+        "options": [
+          "Opt 1",
+          "Opt 2",
+          "Opt 3"
+        ],
+        "correctIndex": 1,
+        "explanation": "",
+        "checkpoint": false
+      }
+    ]
+  }
+]
